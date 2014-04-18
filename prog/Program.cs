@@ -13,8 +13,9 @@ namespace prog
         static void Main(string[] args)
         {
             StreamReader sr = new StreamReader("data\\boundary.txt");
-            double input_x = 120.9665;
-            double input_y = 23.9674;
+            //24.149390, 121.337996
+            double input_x = 121.337996;
+            double input_y = 24.149390;
 
             List<string> regionNameInfo = new List<string>();
             List<string> regionPeopleInfo = new List<string>();
@@ -200,8 +201,8 @@ namespace prog
 
 
             int inRegionNum = -1, inRegionTotalNum = 0;
-            double _y = Math.Ceiling(minY * 10000) / 10000;
-            for (; _y < maxY; _y += 0.0001)
+            double _y = Math.Ceiling(minY * 1000000) / 1000000;
+            for (; _y < maxY; _y += 0.000001)
             {
                 List<double> points = LineCrossNum(_y, lx, ly, minX, maxX);
 
@@ -209,14 +210,14 @@ namespace prog
 
                 bool inRegion = false;
 
-                double _x = Math.Ceiling(minX * 10000) / 10000;
-                for (; _x < maxX; _x += 0.0001)
+                double _x = Math.Ceiling(minX * 1000000) / 1000000;
+                for (; _x < maxX; _x += 0.000001)
                 {
 
                     int matchCount = 0;
                     foreach (double point in points)
                     {
-                        if (_x >= point && _x - 0.0001 <= point)
+                        if (_x >= point && _x - 0.000001 <= point)
                         {
                             matchCount++;
                         }
@@ -233,7 +234,7 @@ namespace prog
                             inRegionNum++;
                     }
 
-                    if (input_x == Math.Round(_x, 4) && input_y == Math.Round(_y, 4) && inRegion)
+                    if (input_x == Math.Round(_x, 6) && input_y == Math.Round(_y, 6) && inRegion)
                     {
                         found = true;
                         isInRegion = true;
@@ -241,7 +242,7 @@ namespace prog
                         //return true;
                         //sw.Write("!" + " ");
                     }
-                    else if (input_x == Math.Round(_x, 4) && input_y == Math.Round(_y, 4))
+                    else if (input_x == Math.Round(_x, 6) && input_y == Math.Round(_y, 6))
                     {
                         //return -1;
                         //return false;
