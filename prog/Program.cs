@@ -67,8 +67,6 @@ namespace prog
             }
             sr.Close();
 
-            #endregion
-
             Console.WriteLine("[Loading codeword]");
             sr = new StreamReader("data\\huffmanCodeTable.txt");
             while (!sr.EndOfStream)
@@ -76,6 +74,7 @@ namespace prog
                 string line = sr.ReadLine();
                 codeword.Add(line.Substring(line.IndexOf('\t') + 1));
             }
+            #endregion
 
             #region Build HuffmanTree
             //Console.WriteLine("[Build HuffmanTree]");
@@ -98,8 +97,6 @@ namespace prog
             #endregion
 
             Console.WriteLine("[Finish]");
-            //debug_full(regionNameInfo, regionPeopleInfo);
-            //Console.ReadKey();
 
             List<int> candiateRegion = new List<int>();
 
@@ -141,68 +138,12 @@ namespace prog
             string binCode = zero + Convert.ToString(regionNum, 2);
 
             Console.WriteLine("(binary): " + binCode + "(" + binCode.Length + " bits)");
-
-
-
             Console.WriteLine("\n\nCodeword: " + codeword[regionID] + binCode);
             Console.WriteLine("Length: " + (codeword[regionID] + binCode).Length + " bits");
            
             
             
             Console.ReadKey();
-        }
-        static private void debug_full( List<string> regionNameInfo,  List<string> regionPeopleInfo)
-        {
-            StreamWriter sw = new StreamWriter("bug.txt");
-            foreach (string ss in regionNameInfo)
-            {
-                string s1 = ss.Split(new char[] { ',' })[3].Replace("高雄縣", "高雄市").Replace("台中縣", "台中市").Replace("台南縣", "台南市");
-                string s2 = ss.Split(new char[] { ',' })[4].Replace("臺", "台");
-                string s3 = ss.Split(new char[] { ',' })[5];
-
-                List<string> all_s1 = new List<string>();
-                List<string> all_s2 = new List<string>();
-                List<string> all_s3 = new List<string>();
-
-                foreach (string s in regionPeopleInfo)
-                {
-                    all_s1.Add(s.Split(new char[] { ',' })[1].Replace("\"", "").Replace("臺", "台").Replace("新北市", "台北縣"));
-                    all_s2.Add(s.Split(new char[] { ',' })[3].Replace("\"", "").Replace("臺", "台"));
-                    all_s3.Add(s.Split(new char[] { ',' })[5].Replace("\"", ""));
-                }
-                bool alreadyMatch = false;
-                int result = 0;
-                for (int i = 0; i < all_s1.Count; i++)
-                {
-                    if (all_s1[i].Equals(s1) && all_s2[i].Equals(s2) && all_s3[i].Equals(s3))
-                    {
-                        alreadyMatch = true;
-                        result = i;
-                    }
-                }
-                if (!alreadyMatch)
-                {
-                    for (int i = 0; i < all_s1.Count; i++)
-                    {
-                        if (all_s1[i].Equals(s1) && all_s2[i].Substring(0, all_s2[i].Length - 1).Equals(s2.Substring(0, s2.Length - 1)) && all_s3[i].Substring(0, all_s3[i].Length - 1).Equals(s3.Substring(0, s3.Length - 1)))
-                        {
-                            alreadyMatch = true;
-                            result = i;
-                        }
-                    }
-                }
-
-                if (!alreadyMatch)
-                {
-                    Console.WriteLine(ss);
-                    sw.WriteLine(ss);
-                    sw.Flush();
-                    //Console.ReadKey();
-                }
-
-            }
-            sw.Close();
-
         }
         static public string getPeopleInfo(string regionNameInfo, List<string> regionPeopleInfo)
         {
