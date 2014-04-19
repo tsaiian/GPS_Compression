@@ -2,39 +2,24 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.IO;
 using System.Collections;
+using System.IO;
 
 namespace prog
 {
-    class Program
+    class GPS_Compression
     {
-        static private List<string> regionNameInfo = new List<string>();
-        static private List<string> regionPeopleInfo = new List<string>();
-        static private Dictionary<int, string> huffmanCodeWordTable = new Dictionary<int, string>();
-        static private List<List<double>> all_x = new List<List<double>>();
-        static private List<List<double>> all_y = new List<List<double>>();
-        
-        static void Main(string[] args)
+        private List<string> regionNameInfo = new List<string>();
+        private List<string> regionPeopleInfo = new List<string>();
+        private Dictionary<int, string> huffmanCodeWordTable = new Dictionary<int, string>();
+        private List<List<double>> all_x = new List<List<double>>();
+        private List<List<double>> all_y = new List<List<double>>();
+
+        public GPS_Compression()
         {
-            //24.149390, 121.337996
-            double x = 121.337996;
-            double y = 24.149390;
-
             ReadData();
-            //BuildHuffmanTree();
-            
-            BitArray codeword = Encode(x, y);
-
-            List<double> result = Decode(codeword);
-            if (result != null)
-                Console.WriteLine(result[0] + "\t" + result[1]);
-            else
-                Console.WriteLine("error codeword");
-            
-            Console.ReadKey();
         }
-        static public List<double> Decode(BitArray codeword)
+        public List<double> Decode(BitArray codeword)
         {
             //decode first part
             int regionID = 0;
@@ -67,7 +52,7 @@ namespace prog
             return DecodeRemainPart(regionID, Convert.ToInt32(secondPart, 2), Convert.ToInt32(thirdPart, 2), all_x[regionID], all_y[regionID]);
 
         }
-        static public BitArray Encode(double input_x, double input_y)
+        public BitArray Encode(double input_x, double input_y)
         {
             List<int> candiateRegion = new List<int>();
 
@@ -135,10 +120,10 @@ namespace prog
             List<bool> bits = new List<bool>();
             foreach (char s in (huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode))
                 bits.Add((s == '0') ? false : true);
-            
+
             return new BitArray(bits.ToArray());
         }
-        static private void BuildHuffmanTree()
+        private void BuildHuffmanTree()
         {
             Console.WriteLine("[Build HuffmanTree]");
             HuffmanTree huffmanTree = new HuffmanTree();
@@ -159,7 +144,7 @@ namespace prog
             }
             sw.Close();
         }
-        static private List<double> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
+        private List<double> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
         {
             double minX = findMin(lx);
             double maxX = findMax(lx);
@@ -203,7 +188,7 @@ namespace prog
             }
             return null;
         }
-        static private void ReadData()
+        private void ReadData()
         {
             Console.WriteLine("[Loading map]");
             List<double> x = new List<double>();
@@ -292,7 +277,7 @@ namespace prog
             {
                 for (int i = 0; i < all_s1.Count; i++)
                 {
-                    if (all_s1[i].Equals(s1) && all_s2[i].Substring(0, all_s2[i].Length - 1).Equals(s2.Substring(0, s2.Length - 1)) && all_s3[i].Substring(0, all_s3[i].Length - 1 ).Equals(s3.Substring(0, s3.Length - 1)))
+                    if (all_s1[i].Equals(s1) && all_s2[i].Substring(0, all_s2[i].Length - 1).Equals(s2.Substring(0, s2.Length - 1)) && all_s3[i].Substring(0, all_s3[i].Length - 1).Equals(s3.Substring(0, s3.Length - 1)))
                     {
                         alreadyMatch = true;
                         result = i;
@@ -306,7 +291,7 @@ namespace prog
                 return "no data";
 
         }
-        static private Dictionary<string, double> inThisRegion(int id, double input_x, double input_y, List<double> lx, List<double> ly)
+        private Dictionary<string, double> inThisRegion(int id, double input_x, double input_y, List<double> lx, List<double> ly)
         {
             Dictionary<string, double> result = new Dictionary<string, double>();
             bool isInRegion = false, found = false;
@@ -343,7 +328,7 @@ namespace prog
                     {
                         inRegionTotalNum++;
 
-                        if(!found)
+                        if (!found)
                             inRegionNum++;
                     }
 
@@ -374,7 +359,7 @@ namespace prog
 
             return result;
         }
-        static private List<double> LineCrossNum(double y, List<double> lx, List<double> ly, double minX, double maxX)
+        private List<double> LineCrossNum(double y, List<double> lx, List<double> ly, double minX, double maxX)
         {
             int corssLineCount = 0;
             List<double> points = new List<double>();
@@ -382,7 +367,7 @@ namespace prog
             {
                 double fp;
                 if (i != lx.Count - 1)
-                    fp = fixPoint(lx[i], ly[i], lx[i + 1], ly[i + 1], y, minX, maxX);  
+                    fp = fixPoint(lx[i], ly[i], lx[i + 1], ly[i + 1], y, minX, maxX);
                 else
                     fp = fixPoint(lx[i], ly[i], lx[0], ly[0], y, minX, maxX);
 
@@ -400,7 +385,7 @@ namespace prog
             }
             return points;
         }
-        static private double fixPoint(double x1, double y1, double x2, double y2, double y, double minX, double maxX)
+        private double fixPoint(double x1, double y1, double x2, double y2, double y, double minX, double maxX)
         {
             double x;
             if (y1 != y2 && ((y1 <= y && y2 >= y) || (y1 >= y && y2 <= y)))
@@ -414,7 +399,7 @@ namespace prog
             else
                 return 0;
         }
-        static private double findMax(List<double> number)
+        private double findMax(List<double> number)
         {
             double res = 0;
             foreach (double d in number)
@@ -423,7 +408,7 @@ namespace prog
 
             return res;
         }
-        static private double findMin(List<double> number)
+        private double findMin(List<double> number)
         {
             double res = 99999999;
             foreach (double d in number)
@@ -432,6 +417,7 @@ namespace prog
 
             return res;
         }
+
 
     }
 }

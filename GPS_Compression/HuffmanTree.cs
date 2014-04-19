@@ -16,7 +16,7 @@ namespace prog
         {
             for (int i = 0; i < regionNameInfo.Count; i++)
             {
-                string peopleInfo = prog.Program.getPeopleInfo(regionNameInfo[i], regionPeopleInfo);
+                string peopleInfo = GPS_Compression.getPeopleInfo(regionNameInfo[i], regionPeopleInfo);
 
                 int peopleCount = 0;
                 if (peopleInfo.Equals("no data"))
