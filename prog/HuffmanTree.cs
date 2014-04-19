@@ -65,15 +65,8 @@ namespace prog
 
         public BitArray Encode(string source)
         {
-            //List<bool> encodedSource = new List<bool>();
-
-            //for (int i = 0; i < source.Length; i++)
-            //{
-                List<bool> encodedSymbol = this.Root.Traverse(source, new List<bool>());
-                //encodedSource.AddRange(encodedSymbol);
-            //}
-
-                BitArray bits = new BitArray(encodedSymbol.ToArray());
+            List<bool> encodedSymbol = this.Root.Traverse(source, new List<bool>());
+            BitArray bits = new BitArray(encodedSymbol.ToArray());
 
             return bits;
         }
@@ -81,7 +74,7 @@ namespace prog
         public string Decode(BitArray bits)
         {
             Node current = this.Root;
-            string decoded = "";
+            //string decoded = "";
 
             foreach (bool bit in bits)
             {
@@ -102,12 +95,13 @@ namespace prog
 
                 if (IsLeaf(current))
                 {
-                    decoded += current.Symbol;
-                    current = this.Root;
+                    return current.Symbol;
+                    //decoded += current.Symbol;
+                    //current = this.Root;
                 }
             }
 
-            return decoded;
+            return null;
         }
 
         public bool IsLeaf(Node node)

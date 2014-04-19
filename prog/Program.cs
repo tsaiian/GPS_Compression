@@ -9,27 +9,207 @@ namespace prog
 {
     class Program
     {
+        static private List<string> regionNameInfo = new List<string>();
+        static private List<string> regionPeopleInfo = new List<string>();
+        static private Dictionary<int, string> huffmanCodeWordTable = new Dictionary<int, string>();
+        static private List<List<double>> all_x = new List<List<double>>();
+        static private List<List<double>> all_y = new List<List<double>>();
+        
         static void Main(string[] args)
         {
-            StreamReader sr = new StreamReader("data\\boundary.txt");
             //24.149390, 121.337996
-            double input_x = 121.337996;
-            double input_y = 24.149390;
+            double x = 121.337996;
+            double y = 24.149390;
 
-            List<string> regionNameInfo = new List<string>();
-            List<string> regionPeopleInfo = new List<string>();
-            List<List<double>> all_x = new List<List<double>>();
-            List<List<double>> all_y = new List<List<double>>();
+            ReadData();
+            //BuildHuffmanTree();
+            
+            BitArray codeword = Encode(x, y);
 
-            List<string> codeword = new List<string>();
+            List<double> result = Decode(codeword);
+            if (result != null)
+                Console.WriteLine(result[0] + "\t" + result[1]);
+            else
+                Console.WriteLine("error codeword");
+            
+            Console.ReadKey();
+        }
+        static public List<double> Decode(BitArray codeword)
+        {
+            //decode first part
+            int regionID = 0;
+            bool huffmanDecodeSuccessful = false;
+            string temp = "";
+            foreach (bool b in codeword)
+            {
+                temp += (b ? "1" : "0");
 
+                if (huffmanCodeWordTable.ContainsValue(temp))
+                {
+                    regionID = huffmanCodeWordTable.FirstOrDefault(x => x.Value == temp).Key;
+                    huffmanDecodeSuccessful = true;
+                    break;
+                }
+            }
+
+            if (!huffmanDecodeSuccessful)
+                return null;
+
+            //decode remain part
+            string secondPart = "";
+            for (int i = temp.Length; i + 12 < codeword.Length; i++)
+                secondPart += (codeword[i] ? "1" : "0");
+
+            string thirdPart = "";
+            for (int i = codeword.Length - 12; i < codeword.Length; i++)
+                thirdPart += (codeword[i] ? "1" : "0");
+
+            return DecodeRemainPart(regionID, Convert.ToInt32(secondPart, 2), Convert.ToInt32(thirdPart, 2), all_x[regionID], all_y[regionID]);
+
+        }
+        static public BitArray Encode(double input_x, double input_y)
+        {
+            List<int> candiateRegion = new List<int>();
+
+            for (int count = 0; count < all_x.Count; count++)
+                if (input_x <= findMax(all_x[count]) && input_x >= findMin(all_x[count]))
+                    if (input_y <= findMax(all_y[count]) && input_y >= findMin(all_y[count]))
+                        candiateRegion.Add(count);
+
+            int regionNum = -1;
+            bool find = false;
+            int regionID = 0;
+            Dictionary<string, double> result = null;
+            foreach (int id in candiateRegion)
+            {
+                result = inThisRegion(id, input_x, input_y, all_x[id], all_y[id]);
+                if ((regionNum = (int)result["inRegionNum"]) != -1)
+                {
+                    regionID = id;
+                    find = true;
+                    break;
+                }
+            }
+
+            if (!find)
+            {
+                Console.WriteLine("not in Taiwan");
+                return null;
+            }
+
+            Console.WriteLine("Region ID: " + regionID);
+            Console.WriteLine("Region Info: " + regionNameInfo[regionID]);
+            Console.WriteLine("People Info: " + getPeopleInfo(regionNameInfo[regionID], regionPeopleInfo));
+
+            Console.WriteLine("\n--FIRST PART--------------");
+            Console.WriteLine("first part codeword:" + huffmanCodeWordTable[regionID] + "(" + (huffmanCodeWordTable[regionID]).Length + " bits)");
+
+            Console.WriteLine("\n--SECOND PART-------------");
+            Console.WriteLine("Total point count in Region: " + result["totalPointInRegion"]);
+            Console.WriteLine("No. x in Region: " + regionNum);
+
+            string zero = "";
+            int zeroCount = Convert.ToString((int)result["totalPointInRegion"], 2).Length - Convert.ToString(regionNum, 2).Length;
+            for (int i = 0; i < zeroCount; i++)
+                zero += "0";
+
+            string secondBinCode = zero + Convert.ToString(regionNum, 2);
+
+            Console.WriteLine("second part codeword:" + secondBinCode + "(" + secondBinCode.Length + " bits)");
+
+            Console.WriteLine("\n--THIRD PART--------------");
+
+            zero = "";
+            zeroCount = 12 - Convert.ToString((int)result["detailBlockNum"], 2).Length;
+            for (int i = 0; i < zeroCount; i++)
+                zero += "0";
+
+            string thirdBinCode = zero + Convert.ToString((int)result["detailBlockNum"], 2);
+            Console.WriteLine("third part codeword: " + thirdBinCode + "(" + thirdBinCode.Length + " bits)");
+
+
+            Console.WriteLine("\n--TOTAL-------------------");
+            Console.WriteLine("Codeword: " + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode);
+            Console.WriteLine("Length: " + (huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode).Length + " bits");
+
+            List<bool> bits = new List<bool>();
+            foreach (char s in (huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode))
+                bits.Add((s == '0') ? false : true);
+            
+            return new BitArray(bits.ToArray());
+        }
+        static private void BuildHuffmanTree()
+        {
+            Console.WriteLine("[Build HuffmanTree]");
+            HuffmanTree huffmanTree = new HuffmanTree();
+            huffmanTree.Build(regionNameInfo, regionPeopleInfo);
+
+            StreamWriter sw = new StreamWriter("huffmanCodeTable.txt");
+            for (int i = 0; i < regionNameInfo.Count; i++)
+            {
+                Console.WriteLine(i);
+                BitArray encoded = huffmanTree.Encode(regionNameInfo[i]);
+                sw.Write(i + "\t");
+                foreach (bool bit in encoded)
+                {
+                    sw.Write((bit ? 1 : 0) + "");
+                }
+                sw.Write('\n');
+
+            }
+            sw.Close();
+        }
+        static private List<double> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
+        {
+            double minX = findMin(lx);
+            double maxX = findMax(lx);
+            double minY = findMin(ly);
+            double maxY = findMax(ly);
+
+            int inRegionNum = -1;
+            double _y = Math.Ceiling(minY * 1000000) / 1000000;
+            for (; _y < maxY; _y += 0.000064)
+            {
+                List<double> points = LineCrossNum(_y, lx, ly, minX, maxX);
+                bool inRegion = false;
+
+                double _x = Math.Ceiling(minX * 1000000) / 1000000;
+                for (; _x < maxX; _x += 0.000064)
+                {
+                    int matchCount = 0;
+                    foreach (double point in points)
+                        if (_x >= point && _x - 0.000064 <= point)
+                            matchCount++;
+
+                    if (matchCount % 2 == 1)
+                        inRegion = inRegion ? false : true;
+
+                    if (inRegion)
+                        inRegionNum++;
+
+
+                    if (inRegion && inRegionNum == NumInRegion)
+                    {
+                        double deltaY = (int)((double)detailNum / 64) * 0.000001;
+                        double deltaX = (int)((double)detailNum % 64) * 0.000001;
+
+                        List<double> result = new List<double>();
+                        result.Add(Math.Round(_x + deltaX, 6));
+                        result.Add(Math.Round(_y + deltaY, 6));
+
+                        return result;
+                    }
+                }
+            }
+            return null;
+        }
+        static private void ReadData()
+        {
+            Console.WriteLine("[Loading map]");
             List<double> x = new List<double>();
             List<double> y = new List<double>();
 
-            int regionNum = -1;
-
-            Console.WriteLine("[Loading map]");
-            #region read data
+            StreamReader sr = new StreamReader("data\\boundary.txt");
             while (!sr.EndOfStream)
             {
                 string line = sr.ReadLine();
@@ -62,104 +242,25 @@ namespace prog
             while (!sr.EndOfStream)
             {
                 string line = sr.ReadLine();
-                if(line.StartsWith("\""))
+                if (line.StartsWith("\""))
                     regionPeopleInfo.Add(line);
             }
             sr.Close();
 
             Console.WriteLine("[Loading codeword]");
             sr = new StreamReader("data\\huffmanCodeTable.txt");
+            int i = 0;
             while (!sr.EndOfStream)
             {
                 string line = sr.ReadLine();
-                codeword.Add(line.Substring(line.IndexOf('\t') + 1));
+                string strCodeword = line.Substring(line.IndexOf('\t') + 1);
+
+                //List<bool> bits = new List<bool>();
+                //foreach (char s in strCodeword)
+                //    bits.Add((s == '0') ? false : true);
+
+                huffmanCodeWordTable.Add(i++, strCodeword);
             }
-            #endregion
-
-            #region Build HuffmanTree
-            //Console.WriteLine("[Build HuffmanTree]");
-            //HuffmanTree huffmanTree = new HuffmanTree();
-            //huffmanTree.Build(regionNameInfo, regionPeopleInfo);
-
-            //StreamWriter sw = new StreamWriter("huffmanCodeTable.txt");
-            //for(int i = 0 ; i < regionNameInfo.Count ; i++)
-            //{
-            //    BitArray encoded = huffmanTree.Encode(regionNameInfo[i]);
-            //    sw.Write(i + "\t");
-            //    foreach (bool bit in encoded)
-            //    {
-            //        sw.Write((bit ? 1 : 0) + "");
-            //    }
-            //    sw.Write('\n');
-                
-            //}
-            //sw.Close();
-            #endregion
-
-            Console.WriteLine("[Finish]");
-
-            List<int> candiateRegion = new List<int>();
-
-            for (int count = 0; count < all_x.Count; count++)
-                if(input_x <= findMax(all_x[count]) && input_x >= findMin(all_x[count]))
-                    if (input_y <= findMax(all_y[count]) && input_y >= findMin(all_y[count]))
-                        candiateRegion.Add(count);
-
-            bool find = false;
-            int regionID = 0;
-            Dictionary<string, double> result = null;
-            foreach (int id in candiateRegion)
-            {
-                result = inThisRegion(id, input_x, input_y, all_x[id], all_y[id]);
-                if ((regionNum = (int)result["inRegionNum"]) != -1)
-                {
-                    regionID = id;
-                    find = true;
-                    break;
-                }
-            }
-
-            if(find)
-                Console.WriteLine("ok");
-            else
-                Console.WriteLine("not found");
-
-            Console.WriteLine("Region ID: " + regionID);
-            Console.WriteLine("Region Info: " + regionNameInfo[regionID]);
-            Console.WriteLine("People Info: " + getPeopleInfo(regionNameInfo[regionID], regionPeopleInfo));
-
-            Console.WriteLine("\n--FIRST PART--------------");
-            Console.WriteLine("first part codeword:" + codeword[regionID] + "(" + codeword[regionID].Length + " bits)");
-
-            Console.WriteLine("\n--SECOND PART-------------");
-            Console.WriteLine("Total point count in Region: " + result["totalPointInRegion"]);
-            Console.WriteLine("No. x in Region: " + regionNum);
-
-            string zero = "";
-            int zeroCount = Convert.ToString((int)result["totalPointInRegion"], 2).Length - Convert.ToString(regionNum, 2).Length;
-            for (int i = 0; i < zeroCount; i++)
-                zero += "0";
-
-            string secondBinCode = zero + Convert.ToString(regionNum, 2);
-
-            Console.WriteLine("second part codeword:" + secondBinCode + "(" + secondBinCode.Length + " bits)");
-
-            Console.WriteLine("\n--THIRD PART--------------");
-
-            zero = "";
-            zeroCount = 12 - Convert.ToString((int)result["detailBlockNum"], 2).Length;
-            for (int i = 0; i < zeroCount; i++)
-                zero += "0";
-
-            string thirdBinCode = zero + Convert.ToString((int)result["detailBlockNum"], 2);
-            Console.WriteLine("third part codeword: " + thirdBinCode + "(" + thirdBinCode.Length + " bits)");
-
-
-            Console.WriteLine("\n--TOTAL-------------------");
-            Console.WriteLine("\n\nCodeword: " + codeword[regionID] + secondBinCode + thirdBinCode);
-            Console.WriteLine("Length: " + (codeword[regionID] + secondBinCode + thirdBinCode).Length + " bits");
-
-            Console.ReadKey();
         }
         static public string getPeopleInfo(string regionNameInfo, List<string> regionPeopleInfo)
         {
@@ -232,12 +333,8 @@ namespace prog
 
                     int matchCount = 0;
                     foreach (double point in points)
-                    {
                         if (_x >= point && _x - 0.000064 <= point)
-                        {
                             matchCount++;
-                        }
-                    }
 
                     if (matchCount % 2 == 1)
                         inRegion = inRegion ? false : true;
