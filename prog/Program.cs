@@ -9,7 +9,6 @@ namespace prog
 {
     class Program
     {
-        static private int totalPointInRegion = 0;
         static void Main(string[] args)
         {
             StreamReader sr = new StreamReader("data\\boundary.txt");
@@ -108,9 +107,11 @@ namespace prog
 
             bool find = false;
             int regionID = 0;
+            Dictionary<string, double> result = null;
             foreach (int id in candiateRegion)
             {
-                if ((regionNum = inThisRegion(id, input_x, input_y, all_x[id], all_y[id])) != -1)
+                result = inThisRegion(id, input_x, input_y, all_x[id], all_y[id]);
+                if ((regionNum = (int)result["inRegionNum"]) != -1)
                 {
                     regionID = id;
                     find = true;
@@ -126,24 +127,38 @@ namespace prog
             Console.WriteLine("Region ID: " + regionID);
             Console.WriteLine("Region Info: " + regionNameInfo[regionID]);
             Console.WriteLine("People Info: " + getPeopleInfo(regionNameInfo[regionID], regionPeopleInfo));
-            Console.WriteLine("Region codeword:" + codeword[regionID] + "(" + codeword[regionID].Length + " bits)\n");
 
-            Console.WriteLine("Total point count in Region: " + totalPointInRegion);
+            Console.WriteLine("\n--FIRST PART--------------");
+            Console.WriteLine("first part codeword:" + codeword[regionID] + "(" + codeword[regionID].Length + " bits)");
+
+            Console.WriteLine("\n--SECOND PART-------------");
+            Console.WriteLine("Total point count in Region: " + result["totalPointInRegion"]);
             Console.WriteLine("No. x in Region: " + regionNum);
 
             string zero = "";
-            int zeroCount = Convert.ToString(totalPointInRegion, 2).Length - Convert.ToString(regionNum, 2).Length;
+            int zeroCount = Convert.ToString((int)result["totalPointInRegion"], 2).Length - Convert.ToString(regionNum, 2).Length;
             for (int i = 0; i < zeroCount; i++)
                 zero += "0";
 
-            string binCode = zero + Convert.ToString(regionNum, 2);
+            string secondBinCode = zero + Convert.ToString(regionNum, 2);
 
-            Console.WriteLine("(binary): " + binCode + "(" + binCode.Length + " bits)");
-            Console.WriteLine("\n\nCodeword: " + codeword[regionID] + binCode);
-            Console.WriteLine("Length: " + (codeword[regionID] + binCode).Length + " bits");
-           
-            
-            
+            Console.WriteLine("second part codeword:" + secondBinCode + "(" + secondBinCode.Length + " bits)");
+
+            Console.WriteLine("\n--THIRD PART--------------");
+
+            zero = "";
+            zeroCount = 12 - Convert.ToString((int)result["detailBlockNum"], 2).Length;
+            for (int i = 0; i < zeroCount; i++)
+                zero += "0";
+
+            string thirdBinCode = zero + Convert.ToString((int)result["detailBlockNum"], 2);
+            Console.WriteLine("third part codeword: " + thirdBinCode + "(" + thirdBinCode.Length + " bits)");
+
+
+            Console.WriteLine("\n--TOTAL-------------------");
+            Console.WriteLine("\n\nCodeword: " + codeword[regionID] + secondBinCode + thirdBinCode);
+            Console.WriteLine("Length: " + (codeword[regionID] + secondBinCode + thirdBinCode).Length + " bits");
+
             Console.ReadKey();
         }
         static public string getPeopleInfo(string regionNameInfo, List<string> regionPeopleInfo)
@@ -190,8 +205,9 @@ namespace prog
                 return "no data";
 
         }
-        static private int inThisRegion(int id, double input_x, double input_y, List<double> lx, List<double> ly)
+        static private Dictionary<string, double> inThisRegion(int id, double input_x, double input_y, List<double> lx, List<double> ly)
         {
+            Dictionary<string, double> result = new Dictionary<string, double>();
             bool isInRegion = false, found = false;
 
             double minX = findMin(lx);
@@ -202,7 +218,7 @@ namespace prog
 
             int inRegionNum = -1, inRegionTotalNum = 0;
             double _y = Math.Ceiling(minY * 1000000) / 1000000;
-            for (; _y < maxY; _y += 0.000001)
+            for (; _y < maxY; _y += 0.000064)
             {
                 List<double> points = LineCrossNum(_y, lx, ly, minX, maxX);
 
@@ -211,13 +227,13 @@ namespace prog
                 bool inRegion = false;
 
                 double _x = Math.Ceiling(minX * 1000000) / 1000000;
-                for (; _x < maxX; _x += 0.000001)
+                for (; _x < maxX; _x += 0.000064)
                 {
 
                     int matchCount = 0;
                     foreach (double point in points)
                     {
-                        if (_x >= point && _x - 0.000001 <= point)
+                        if (_x >= point && _x - 0.000064 <= point)
                         {
                             matchCount++;
                         }
@@ -234,19 +250,13 @@ namespace prog
                             inRegionNum++;
                     }
 
-                    if (input_x == Math.Round(_x, 6) && input_y == Math.Round(_y, 6) && inRegion)
+                    if (input_x < Math.Round(_x, 6) + 0.000064 && input_x >= Math.Round(_x, 6) && input_y < Math.Round(_y, 6) + 0.000064 && input_y >= Math.Round(_y, 6) && inRegion)
                     {
                         found = true;
                         isInRegion = true;
-                        //return inRegionNum;
-                        //return true;
-                        //sw.Write("!" + " ");
-                    }
-                    else if (input_x == Math.Round(_x, 6) && input_y == Math.Round(_y, 6))
-                    {
-                        //return -1;
-                        //return false;
-                        //sw.Write("-" + " ");
+
+                        int detailBlockNum = (int)(Math.Round((input_y - Math.Round(_y, 6)), 6) * 1000000) * 64 + (int)(Math.Round((input_x - Math.Round(_x, 6)), 6) * 1000000);
+                        result.Add("detailBlockNum", detailBlockNum);
                     }
                 }
                 //foreach (double l in points)
@@ -259,12 +269,13 @@ namespace prog
             //return false;
 
             if (isInRegion)
-            {
-                totalPointInRegion = inRegionTotalNum;
-                return inRegionNum;
-            }
+                result.Add("inRegionNum", inRegionNum);
             else
-                return -1;
+                result.Add("inRegionNum", -1);
+
+            result.Add("totalPointInRegion", inRegionTotalNum);
+
+            return result;
         }
         static private List<double> LineCrossNum(double y, List<double> lx, List<double> ly, double minX, double maxX)
         {
