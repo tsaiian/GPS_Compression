@@ -1,6 +1,3 @@
-GPS_Compression
-===============
-
 # Input #
 
 GPS coordinates in Taiwan (accurate to six decimal place)
