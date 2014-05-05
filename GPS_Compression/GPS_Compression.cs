@@ -42,11 +42,11 @@ namespace prog
 
             //decode remain part
             string secondPart = "";
-            for (int i = temp.Length; i + 12 < codeword.Length; i++)
+            for (int i = temp.Length; i + 6 < codeword.Length; i++)
                 secondPart += (codeword[i] ? "1" : "0");
 
             string thirdPart = "";
-            for (int i = codeword.Length - 12; i < codeword.Length; i++)
+            for (int i = codeword.Length - 6; i < codeword.Length; i++)
                 thirdPart += (codeword[i] ? "1" : "0");
 
             return DecodeRemainPart(regionID, Convert.ToInt32(secondPart, 2), Convert.ToInt32(thirdPart, 2), all_x[regionID], all_y[regionID]);
@@ -105,7 +105,7 @@ namespace prog
             Console.WriteLine("\n--THIRD PART--------------");
 
             zero = "";
-            zeroCount = 12 - Convert.ToString((int)result["detailBlockNum"], 2).Length;
+            zeroCount = 6 - Convert.ToString((int)result["detailBlockNum"], 2).Length;
             for (int i = 0; i < zeroCount; i++)
                 zero += "0";
 
@@ -152,18 +152,18 @@ namespace prog
             double maxY = findMax(ly);
 
             int inRegionNum = -1;
-            double _y = Math.Ceiling(minY * 1000000) / 1000000;
-            for (; _y < maxY; _y += 0.000064)
+            double _y = Math.Ceiling(minY * 100000) / 100000;
+            for (; _y < maxY; _y += 0.00008)
             {
                 List<double> points = LineCrossNum(_y, lx, ly, minX, maxX);
                 bool inRegion = false;
 
-                double _x = Math.Ceiling(minX * 1000000) / 1000000;
-                for (; _x < maxX; _x += 0.000064)
+                double _x = Math.Ceiling(minX * 100000) / 100000;
+                for (; _x < maxX; _x += 0.00008)
                 {
                     int matchCount = 0;
                     foreach (double point in points)
-                        if (_x >= point && _x - 0.000064 <= point)
+                        if (_x >= point && _x - 0.00008 <= point)
                             matchCount++;
 
                     if (matchCount % 2 == 1)
@@ -175,12 +175,12 @@ namespace prog
 
                     if (inRegion && inRegionNum == NumInRegion)
                     {
-                        double deltaY = (int)((double)detailNum / 64) * 0.000001;
-                        double deltaX = (int)((double)detailNum % 64) * 0.000001;
+                        double deltaY = (int)((double)detailNum / 6) * 0.00001;
+                        double deltaX = (int)((double)detailNum % 6) * 0.00001;
 
                         List<double> result = new List<double>();
-                        result.Add(Math.Round(_x + deltaX, 6));
-                        result.Add(Math.Round(_y + deltaY, 6));
+                        result.Add(Math.Round(_x + deltaX, 5));
+                        result.Add(Math.Round(_y + deltaY, 5));
 
                         return result;
                     }
@@ -303,8 +303,8 @@ namespace prog
 
 
             int inRegionNum = -1, inRegionTotalNum = 0;
-            double _y = Math.Ceiling(minY * 1000000) / 1000000;
-            for (; _y < maxY; _y += 0.000064)
+            double _y = Math.Ceiling(minY * 100000) / 100000;
+            for (; _y < maxY; _y += 0.00008)
             {
                 List<double> points = LineCrossNum(_y, lx, ly, minX, maxX);
 
@@ -312,13 +312,13 @@ namespace prog
 
                 bool inRegion = false;
 
-                double _x = Math.Ceiling(minX * 1000000) / 1000000;
-                for (; _x < maxX; _x += 0.000064)
+                double _x = Math.Ceiling(minX * 100000) / 100000;
+                for (; _x < maxX; _x += 0.00008)
                 {
 
                     int matchCount = 0;
                     foreach (double point in points)
-                        if (_x >= point && _x - 0.000064 <= point)
+                        if (_x >= point && _x - 0.00008 <= point)
                             matchCount++;
 
                     if (matchCount % 2 == 1)
@@ -332,12 +332,12 @@ namespace prog
                             inRegionNum++;
                     }
 
-                    if (input_x < Math.Round(_x, 6) + 0.000064 && input_x >= Math.Round(_x, 6) && input_y < Math.Round(_y, 6) + 0.000064 && input_y >= Math.Round(_y, 6) && inRegion)
+                    if (input_x < Math.Round(_x, 5) + 0.00008 && input_x >= Math.Round(_x, 5) && input_y < Math.Round(_y, 5) + 0.00008 && input_y >= Math.Round(_y, 5) && inRegion)
                     {
                         found = true;
                         isInRegion = true;
 
-                        int detailBlockNum = (int)(Math.Round((input_y - Math.Round(_y, 6)), 6) * 1000000) * 64 + (int)(Math.Round((input_x - Math.Round(_x, 6)), 6) * 1000000);
+                        int detailBlockNum = (int)(Math.Round((input_y - Math.Round(_y, 5)), 5) * 100000) * 6 + (int)(Math.Round((input_x - Math.Round(_x, 5)), 5) * 100000);
                         result.Add("detailBlockNum", detailBlockNum);
                     }
                 }

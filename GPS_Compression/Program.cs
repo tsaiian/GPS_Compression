@@ -11,8 +11,9 @@ namespace prog
     {
         static void Main(string[] args)
         {
-            double x = 121.337996;
-            double y = 24.149390;
+            double x = 121.33799;
+            double y = 24.14939;
+
 
             GPS_Compression GPSC = new GPS_Compression();
 
