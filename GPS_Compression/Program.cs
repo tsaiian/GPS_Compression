@@ -19,9 +19,9 @@ namespace prog
 
             BitArray codeword = GPSC.Encode(x, y);
 
-            List<double> result = GPSC.Decode(codeword);
+            Tuple<double, double> result = GPSC.Decode(codeword);
             if (result != null)
-                Console.WriteLine(result[0] + "\t" + result[1]);
+                Console.WriteLine(result.Item1 + "\t" + result.Item2);
             else
                 Console.WriteLine("error codeword");
             

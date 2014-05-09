@@ -19,7 +19,7 @@ namespace prog
         {
             ReadData();
         }
-        public List<double> Decode(BitArray codeword)
+        public Tuple<double, double> Decode(BitArray codeword)
         {
             //decode first part
             int regionID = 0;
@@ -144,7 +144,7 @@ namespace prog
             }
             sw.Close();
         }
-        private List<double> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
+        private Tuple<double, double> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
         {
             double minX = findMin(lx);
             double maxX = findMax(lx);
@@ -178,11 +178,7 @@ namespace prog
                         double deltaY = (int)((double)detailNum / 6) * 0.00001;
                         double deltaX = (int)((double)detailNum % 6) * 0.00001;
 
-                        List<double> result = new List<double>();
-                        result.Add(Math.Round(_x + deltaX, 5));
-                        result.Add(Math.Round(_y + deltaY, 5));
-
-                        return result;
+                        return  new Tuple<double, double>(Math.Round(_x + deltaX, 5), Math.Round(_y + deltaY, 5));
                     }
                 }
             }
