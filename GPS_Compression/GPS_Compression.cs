@@ -15,47 +15,358 @@ namespace prog
         private List<List<double>> all_x = new List<List<double>>();
         private List<List<double>> all_y = new List<List<double>>();
 
+        #region Constructor and data prepare
         public GPS_Compression()
         {
             ReadData();
         }
-        public Tuple<double, double> Decode(BitArray codeword)
-        {
-            //decode first part
-            int regionID = 0;
-            bool huffmanDecodeSuccessful = false;
-            string temp = "";
-            foreach (bool b in codeword)
-            {
-                temp += (b ? "1" : "0");
 
-                if (huffmanCodeWordTable.ContainsValue(temp))
+        private void ReadData()
+        {
+            Console.WriteLine("[Loading map]");
+            List<double> x = new List<double>();
+            List<double> y = new List<double>();
+
+            StreamReader sr = new StreamReader("data\\boundary.txt");
+            while (!sr.EndOfStream)
+            {
+                string line = sr.ReadLine();
+
+                if (line.StartsWith("121.") || line.StartsWith("120.") || line.StartsWith("119."))
                 {
-                    regionID = huffmanCodeWordTable.FirstOrDefault(x => x.Value == temp).Key;
-                    huffmanDecodeSuccessful = true;
-                    break;
+                    y.Add(Convert.ToDouble(line.Substring(line.IndexOf(" ") + 1)));
+                    x.Add(Convert.ToDouble(line.Substring(0, line.IndexOf(" "))));
+                }
+                else if (line.StartsWith("PEN(1,2,7237230)"))
+                {
+                    all_x.Add(x);
+                    all_y.Add(y);
+
+                    x = new List<double>();
+                    y = new List<double>();
                 }
             }
+            sr.Close();
 
-            if (!huffmanDecodeSuccessful)
-                return null;
+            sr = new StreamReader("data\\TWN_VILLAGE.mid");
+            while (!sr.EndOfStream)
+            {
+                string line = sr.ReadLine();
+                regionNameInfo.Add(line);
+            }
+            sr.Close();
 
-            //decode remain part
-            string secondPart = "";
-            for (int i = temp.Length; i + 6 < codeword.Length; i++)
-                secondPart += (codeword[i] ? "1" : "0");
+            sr = new StreamReader("data\\U01VI_102Y12M_TW.csv");
+            while (!sr.EndOfStream)
+            {
+                string line = sr.ReadLine();
+                if (line.StartsWith("\""))
+                    regionPeopleInfo.Add(line);
+            }
+            sr.Close();
 
-            string thirdPart = "";
-            for (int i = codeword.Length - 6; i < codeword.Length; i++)
-                thirdPart += (codeword[i] ? "1" : "0");
+            Console.WriteLine("[Loading codeword]");
+            sr = new StreamReader("data\\huffmanCodeTable.txt");
+            int i = 0;
+            while (!sr.EndOfStream)
+            {
+                string line = sr.ReadLine();
+                string strCodeword = line.Substring(line.IndexOf('\t') + 1);
 
-            return DecodeRemainPart(regionID, Convert.ToInt32(secondPart, 2), Convert.ToInt32(thirdPart, 2), all_x[regionID], all_y[regionID]);
+                //List<bool> bits = new List<bool>();
+                //foreach (char s in strCodeword)
+                //    bits.Add((s == '0') ? false : true);
 
+                huffmanCodeWordTable.Add(i++, strCodeword);
+            }
         }
-        public BitArray Encode(double input_x, double input_y)
+        #endregion
+
+        public BitArray Encode(double input_x, double input_y, double old_x = 0, double old_y = 0)
+        {
+            if (old_x == 0 && old_y == 0)
+                return AbsolutePositionEncode(input_x, input_y);
+            if(Math.Abs(input_x - old_x) > 0.2 || Math.Abs(input_y - old_y) > 0.2)
+                return AbsolutePositionEncode(input_x, input_y);
+
+            BitArray refCodeword = ReferencePositionEncode(input_x, input_y, old_x, old_y);
+            BitArray absCodeword = AbsolutePositionEncode(input_x, input_y);
+
+            Console.WriteLine(refCodeword.Length + "\t" + absCodeword.Length);
+
+
+            if (refCodeword.Length < absCodeword.Length)
+                return refCodeword;
+            else
+                return absCodeword;
+        }
+
+        public Tuple<double, double> Decode(BitArray codeword, double old_x, double old_y)
+        {
+            List<bool> temp = new List<bool>();
+            for (int i = 1; i < codeword.Length; i++)
+                temp.Add(codeword[i]);
+
+
+            if (codeword.Length > 0 && codeword[0] == true)
+                return ReferencePositionDecode(new BitArray(temp.ToArray()), old_x, old_y);
+            else
+                return AbsolutePositionDecode(new BitArray(temp.ToArray()));
+        }
+
+        #region Reference position related function
+        private BitArray ReferencePositionEncode(double input_x, double input_y, double old_x, double old_y)
+        {
+            int deltaX = (int)(Math.Round((input_x - old_x), 5) * 100000);
+            int deltaY = (int)(Math.Round((input_y - old_y), 5) * 100000);
+
+            int refInt = CirlceDifference(deltaX, deltaY);
+            string binary = Convert.ToString(refInt, 2);
+            
+            List<bool> bits = new List<bool>();
+
+            //first bit -> ref
+            bits.Add(true);
+            
+            foreach (char s in binary)
+                bits.Add((s == '0') ? false : true);
+
+            return new BitArray(bits.ToArray());
+        }
+
+        public Tuple<double, double> ReferencePositionDecode(BitArray codeword, double old_x, double old_y)
+        {
+            string str = "";
+            foreach (bool b in codeword)
+                str += (b ? "1" : "0");
+
+            Tuple<int, int> diff = InverseCD(Convert.ToInt32(str, 2));
+
+            double resultX = old_x + ((double)diff.Item1 * 0.00001);
+            double resultY = old_y + ((double)diff.Item2 * 0.00001);
+
+            return new Tuple<double, double>(resultX, resultY);
+        }
+
+         private int CirlceDifference(int X, int Y)
+        {
+            int level = Math.Max(Math.Abs(X), Math.Abs(Y));
+            int edge = level * 2 + 1;
+            if (level == 0)
+                return 0;
+
+            int init = (int)(Math.Pow(edge - 2, 2));
+            if (X == 0)
+            {
+                if (Y > 0)
+                    return init;
+                return init + 2;
+
+            }
+            if (Y == 0)
+            {
+                if (X > 0)
+                    return init + 1;
+                return init + 3;
+            }
+            List<int> repeat = new List<int>() { 4 };
+            for (int i = level - 1; i > 0; i--)
+                repeat.Add(8);
+            repeat.Add(-3);
+            for (int i = level - 1; i > 0; i--)
+                repeat.Add(-8);
+            int Quadrant = 0;
+            if (X > 0)
+            {
+                if (Y < 0)
+                {
+                    Quadrant = 1;
+                }
+            }
+            else
+            {
+                if (Y > 0)
+                {
+                    Quadrant = 3;
+                    repeat[repeat.IndexOf(-3)] = -7;
+                }
+                else
+                {
+                    Quadrant = 2;
+                }
+            }
+            init += Quadrant;
+            int index = 0;
+            int x = 0;
+            int y = 0;
+            switch (Quadrant)
+            {
+                case (0):
+                    y = level;
+                    for (x += 1; x <= edge / 2; x++)
+                    {
+                        init += repeat[index++];
+                        if (x == X && y == Y)
+                            return init;
+                    }
+                    x -= 1;
+                    for (y -= 1; y > 0; y--)
+                    {
+                        init += repeat[index++];
+                        if (x == X && y == Y)
+                            return init;
+                    }
+                    break;
+                case (1):
+                    x = level;
+                    for (y = -1; y >= -edge / 2; y--)
+                    {
+                        init += repeat[index++];
+                        if (x == X && y == Y)
+                            return init;
+                    }
+                    y += 1;
+                    for (x -= 1; x > 0; x--)
+                    {
+                        init += repeat[index++];
+                        if (x == X && y == Y)
+                            return init;
+                    }
+                    break;
+                case (2):
+                    y = -level;
+                    for (x = -1; x >= -edge / 2; x--)
+                    {
+                        init += repeat[index++];
+                        if (x == X && y == Y)
+                            return init;
+                    }
+                    x += 1;
+                    for (y += 1; y <= edge / 2; y++)
+                    {
+                        init += repeat[index++];
+                        if (x == X && y == Y)
+                            return init;
+                    }
+                    break;
+                case (3):
+                    x = -level;
+                    for (y += 1; y <= edge / 2; y++)
+                    {
+                        init += repeat[index++];
+                        if (x == X && y == Y)
+                            return init;
+                    }
+                    y -= 1;
+                    for (x += 1; x <= edge / 2; x++)
+                    {
+                        init += repeat[index++];
+                        if (x == X && y == Y)
+                            return init;
+                    }
+                    break;
+            }
+            throw new Exception();
+        }
+
+         private Tuple<int, int> InverseCD(int Difference)
+         {
+             int edge = 0;
+             for (int i = 1; ; i += 2)
+                 if (i * i > Difference)
+                 {
+                     edge = i;
+                     break;
+                 }
+             if (Difference == 0)
+                 return new Tuple<int, int>(0, 0);
+             int level = (edge - 1) / 2;
+             int init = (int)(Math.Pow(edge - 2, 2));
+             List<int> repeat = new List<int>() { 4 };
+             for (int i = level - 1; i > 0; i--)
+                 repeat.Add(8);
+             repeat.Add(-3);
+             for (int i = level - 1; i > 0; i--)
+                 repeat.Add(-8);
+             int x = 0;
+             int y = 0;
+             int index = 0;
+             if (init == Difference)
+                 return new Tuple<int, int>(0, level);
+
+             y = level;
+             for (x += 1; x <= edge / 2; x++)
+             {
+                 init += repeat[index++];
+                 if (init == Difference)
+                     return new Tuple<int, int>(x, y);
+             }
+             x -= 1;
+             for (y -= 1; y >= 0; y--)
+             {
+                 init += repeat[index++];
+                 if (init == Difference)
+                     return new Tuple<int, int>(x, y);
+             }
+             y = 0;
+             x = level;
+             index = 0;
+             for (y = -1; y >= -edge / 2; y--)
+             {
+                 init += repeat[index++];
+                 if (init == Difference)
+                     return new Tuple<int, int>(x, y);
+             }
+             y += 1;
+             for (x -= 1; x >= 0; x--)
+             {
+                 init += repeat[index++];
+                 if (init == Difference)
+                     return new Tuple<int, int>(x, y);
+             }
+
+             x = 0;
+             y = -level;
+             index = 0;
+             for (x = -1; x >= -edge / 2; x--)
+             {
+                 init += repeat[index++];
+                 if (init == Difference)
+                     return new Tuple<int, int>(x, y);
+             }
+             x += 1;
+             for (y += 1; y <= 0; y++)
+             {
+                 init += repeat[index++];
+                 if (init == Difference)
+                     return new Tuple<int, int>(x, y);
+             }
+             y -= 1;
+
+             x = -level;
+             index = 0;
+             repeat[repeat.IndexOf(-3)] = -7;
+             for (y += 1; y <= edge / 2; y++)
+             {
+                 init += repeat[index++];
+                 if (init == Difference)
+                     return new Tuple<int, int>(x, y);
+             }
+             y -= 1;
+             for (x += 1; x <= edge / 2; x++)
+             {
+                 init += repeat[index++];
+                 if (init == Difference)
+                     return new Tuple<int, int>(x, y);
+             }
+             throw new Exception();
+         }
+        #endregion
+
+        #region Absolute position related function
+        public BitArray AbsolutePositionEncode(double input_x, double input_y)
         {
             List<int> candiateRegion = new List<int>();
-
             for (int count = 0; count < all_x.Count; count++)
                 if (input_x <= findMax(all_x[count]) && input_x >= findMin(all_x[count]))
                     if (input_y <= findMax(all_y[count]) && input_y >= findMin(all_y[count]))
@@ -118,32 +429,52 @@ namespace prog
             Console.WriteLine("Length: " + (huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode).Length + " bits");
 
             List<bool> bits = new List<bool>();
+
+            //first bits -> abs
+            bits.Add(false);
+
             foreach (char s in (huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode))
                 bits.Add((s == '0') ? false : true);
 
             return new BitArray(bits.ToArray());
         }
-        private void BuildHuffmanTree()
+
+        public Tuple<double, double> AbsolutePositionDecode(BitArray codeword)
         {
-            Console.WriteLine("[Build HuffmanTree]");
-            HuffmanTree huffmanTree = new HuffmanTree();
-            huffmanTree.Build(regionNameInfo, regionPeopleInfo);
 
-            StreamWriter sw = new StreamWriter("huffmanCodeTable.txt");
-            for (int i = 0; i < regionNameInfo.Count; i++)
+
+            //decode first part
+            int regionID = 0;
+            bool huffmanDecodeSuccessful = false;
+            string temp = "";
+            foreach (bool b in codeword)
             {
-                Console.WriteLine(i);
-                BitArray encoded = huffmanTree.Encode(regionNameInfo[i]);
-                sw.Write(i + "\t");
-                foreach (bool bit in encoded)
-                {
-                    sw.Write((bit ? 1 : 0) + "");
-                }
-                sw.Write('\n');
+                temp += (b ? "1" : "0");
 
+                if (huffmanCodeWordTable.ContainsValue(temp))
+                {
+                    regionID = huffmanCodeWordTable.FirstOrDefault(x => x.Value == temp).Key;
+                    huffmanDecodeSuccessful = true;
+                    break;
+                }
             }
-            sw.Close();
+
+            if (!huffmanDecodeSuccessful)
+                return null;
+
+            //decode remain part
+            string secondPart = "";
+            for (int i = temp.Length; i + 6 < codeword.Length; i++)
+                secondPart += (codeword[i] ? "1" : "0");
+
+            string thirdPart = "";
+            for (int i = codeword.Length - 6; i < codeword.Length; i++)
+                thirdPart += (codeword[i] ? "1" : "0");
+
+            return DecodeRemainPart(regionID, Convert.ToInt32(secondPart, 2), Convert.ToInt32(thirdPart, 2), all_x[regionID], all_y[regionID]);
+
         }
+
         private Tuple<double, double> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
         {
             double minX = findMin(lx);
@@ -178,71 +509,13 @@ namespace prog
                         double deltaY = (int)((double)detailNum / 6) * 0.00001;
                         double deltaX = (int)((double)detailNum % 6) * 0.00001;
 
-                        return  new Tuple<double, double>(Math.Round(_x + deltaX, 5), Math.Round(_y + deltaY, 5));
+                        return new Tuple<double, double>(Math.Round(_x + deltaX, 5), Math.Round(_y + deltaY, 5));
                     }
                 }
             }
             return null;
         }
-        private void ReadData()
-        {
-            Console.WriteLine("[Loading map]");
-            List<double> x = new List<double>();
-            List<double> y = new List<double>();
 
-            StreamReader sr = new StreamReader("data\\boundary.txt");
-            while (!sr.EndOfStream)
-            {
-                string line = sr.ReadLine();
-
-                if (line.StartsWith("121.") || line.StartsWith("120.") || line.StartsWith("119."))
-                {
-                    y.Add(Convert.ToDouble(line.Substring(line.IndexOf(" ") + 1)));
-                    x.Add(Convert.ToDouble(line.Substring(0, line.IndexOf(" "))));
-                }
-                else if (line.StartsWith("PEN(1,2,7237230)"))
-                {
-                    all_x.Add(x);
-                    all_y.Add(y);
-
-                    x = new List<double>();
-                    y = new List<double>();
-                }
-            }
-            sr.Close();
-
-            sr = new StreamReader("data\\TWN_VILLAGE.mid");
-            while (!sr.EndOfStream)
-            {
-                string line = sr.ReadLine();
-                regionNameInfo.Add(line);
-            }
-            sr.Close();
-
-            sr = new StreamReader("data\\U01VI_102Y12M_TW.csv");
-            while (!sr.EndOfStream)
-            {
-                string line = sr.ReadLine();
-                if (line.StartsWith("\""))
-                    regionPeopleInfo.Add(line);
-            }
-            sr.Close();
-
-            Console.WriteLine("[Loading codeword]");
-            sr = new StreamReader("data\\huffmanCodeTable.txt");
-            int i = 0;
-            while (!sr.EndOfStream)
-            {
-                string line = sr.ReadLine();
-                string strCodeword = line.Substring(line.IndexOf('\t') + 1);
-
-                //List<bool> bits = new List<bool>();
-                //foreach (char s in strCodeword)
-                //    bits.Add((s == '0') ? false : true);
-
-                huffmanCodeWordTable.Add(i++, strCodeword);
-            }
-        }
         static public string getPeopleInfo(string regionNameInfo, List<string> regionPeopleInfo)
         {
             string s1 = regionNameInfo.Split(new char[] { ',' })[3].Replace("高雄縣", "高雄市").Replace("台中縣", "台中市").Replace("台南縣", "台南市");
@@ -287,6 +560,7 @@ namespace prog
                 return "no data";
 
         }
+
         private Dictionary<string, double> inThisRegion(int id, double input_x, double input_y, List<double> lx, List<double> ly)
         {
             Dictionary<string, double> result = new Dictionary<string, double>();
@@ -355,6 +629,7 @@ namespace prog
 
             return result;
         }
+
         private List<double> LineCrossNum(double y, List<double> lx, List<double> ly, double minX, double maxX)
         {
             int corssLineCount = 0;
@@ -381,6 +656,7 @@ namespace prog
             }
             return points;
         }
+
         private double fixPoint(double x1, double y1, double x2, double y2, double y, double minX, double maxX)
         {
             double x;
@@ -395,6 +671,7 @@ namespace prog
             else
                 return 0;
         }
+
         private double findMax(List<double> number)
         {
             double res = 0;
@@ -404,6 +681,7 @@ namespace prog
 
             return res;
         }
+
         private double findMin(List<double> number)
         {
             double res = 99999999;
@@ -413,7 +691,29 @@ namespace prog
 
             return res;
         }
+        #endregion
 
+        private void BuildHuffmanTree()
+        {
+            Console.WriteLine("[Build HuffmanTree]");
+            HuffmanTree huffmanTree = new HuffmanTree();
+            huffmanTree.Build(regionNameInfo, regionPeopleInfo);
+
+            StreamWriter sw = new StreamWriter("huffmanCodeTable.txt");
+            for (int i = 0; i < regionNameInfo.Count; i++)
+            {
+                Console.WriteLine(i);
+                BitArray encoded = huffmanTree.Encode(regionNameInfo[i]);
+                sw.Write(i + "\t");
+                foreach (bool bit in encoded)
+                {
+                    sw.Write((bit ? 1 : 0) + "");
+                }
+                sw.Write('\n');
+
+            }
+            sw.Close();
+        }
 
     }
 }
