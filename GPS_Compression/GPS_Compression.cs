@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Collections;
 using System.IO;
+using System.Numerics;
 
 namespace prog
 {
@@ -73,10 +74,6 @@ namespace prog
                 string line = sr.ReadLine();
                 string strCodeword = line.Substring(line.IndexOf('\t') + 1);
 
-                //List<bool> bits = new List<bool>();
-                //foreach (char s in strCodeword)
-                //    bits.Add((s == '0') ? false : true);
-
                 huffmanCodeWordTable.Add(i++, strCodeword);
             }
         }
@@ -115,14 +112,15 @@ namespace prog
         }
 
         #region Reference position related function
+
         private BitArray ReferencePositionEncode(double input_x, double input_y, double old_x, double old_y)
         {
             int deltaX = (int)(Math.Round((input_x - old_x), 5) * 100000);
             int deltaY = (int)(Math.Round((input_y - old_y), 5) * 100000);
 
-            int refInt = CirlceDifference(deltaX, deltaY);
-            string binary = Convert.ToString(refInt, 2);
-            
+            int refInt = CircleDifference(deltaX, deltaY);
+            string binary = EncodeInt(refInt);
+
             List<bool> bits = new List<bool>();
 
             //first bit -> ref
@@ -131,16 +129,23 @@ namespace prog
             foreach (char s in binary)
                 bits.Add((s == '0') ? false : true);
 
+            Console.WriteLine("\n--FIRST BIT--------------\n1");
+            Console.WriteLine("refInt:" + refInt);
+            Console.WriteLine("EncodeInt:" + binary);
+            Console.WriteLine("\n--TOTAL--------------\n1");
+            Console.WriteLine("codeword:" + "1" + binary);
+            Console.WriteLine("length:" + ("1" + binary).Length + "\n");
+
             return new BitArray(bits.ToArray());
         }
 
-        public Tuple<double, double> ReferencePositionDecode(BitArray codeword, double old_x, double old_y)
+        private Tuple<double, double> ReferencePositionDecode(BitArray codeword, double old_x, double old_y)
         {
             string str = "";
-            foreach (bool b in codeword)
+            foreach(bool b in codeword)
                 str += (b ? "1" : "0");
 
-            Tuple<int, int> diff = InverseCD(Convert.ToInt32(str, 2));
+            Tuple<int, int> diff = InverseCD(DecodeInt(str));
 
             double resultX = old_x + ((double)diff.Item1 * 0.00001);
             double resultY = old_y + ((double)diff.Item2 * 0.00001);
@@ -148,7 +153,118 @@ namespace prog
             return new Tuple<double, double>(resultX, resultY);
         }
 
-         private int CirlceDifference(int X, int Y)
+        private string EncodeInt(int n)
+        {
+            int ok = 0;
+            for (int i = 1; ; i++)
+            {
+                if (!Convert.ToString(i, 2).Contains("111"))
+                    ok++;
+
+                if (ok == n)
+                    return Convert.ToString(i, 2) + "111";
+                
+            }
+        }
+
+        private int DecodeInt(string s)
+        {
+            //remove last 111
+            string str = "";
+            for (int i = 0; i < s.Length - 3; i++)
+                str += s[i];
+
+            int n = Convert.ToInt32(str, 2);
+            return n - HoleCount(n);
+        }
+
+        static private BigInteger Factorial(int n)
+        {
+            BigInteger r = 1;
+            for (int i = 1; i <= n; i++)
+                r *= i;
+
+            return r;
+        }
+
+        static private int HoleCount(int num)
+        {
+            string bin = Convert.ToString(num, 2);
+            int n = bin.Length;
+            
+            int result = 0;
+            bool threeOneAlready = false;
+            for (int i = 0; i < n; i++)
+            {
+                if (bin[i] == '1')
+                {
+                    //1[0]+
+                    string oneZeros = "1";
+                    for (int j = 0; j < n - i - 1; j++)
+                        oneZeros += "0";
+
+                    if (!threeOneAlready)
+                        result += OneHoleCount(oneZeros);
+                    else
+                        result += (int)Math.Pow(2, n - i -1);
+
+                    if (i >= 2 && bin[i - 1] == '1' && bin[i - 2] == '1')
+                    {
+                        if (!threeOneAlready)
+                        {
+                            threeOneAlready = true;
+                            result++;
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        static private int OneHoleCount(string bin)
+        {//bin must be "1", "10", "100", "1000" ...
+            int n = bin.Length - 1;
+
+            int totalCount = 0;
+            for (int i = 3; i <= n; i++)
+            {
+                int zeroCount = n - i;
+                int oneCount = i;
+
+                //all possible combination
+                int total = (int)(Factorial(zeroCount + oneCount) / Factorial(zeroCount) / Factorial(oneCount));
+
+                //divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
+                List<Tuple<int, int>> r = Grouping(oneCount);
+
+                int back = 0;
+                foreach (Tuple<int, int> t in r)
+                    back += (int)(Combination(zeroCount + 1, t.Item1 + t.Item2) * Factorial(t.Item1 + t.Item2) / Factorial(t.Item1) / Factorial(t.Item2));
+
+                totalCount += total - back;
+            }
+            return totalCount;
+        }
+
+        static private int Combination(int a, int b)
+        {
+            if (b > a)
+                return 0;
+
+            int r = (int)(Factorial(a) / Factorial(b) / Factorial(a - b));
+            return r;
+        }
+
+        static List<Tuple<int, int>> Grouping(int num)
+        {//divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
+            List<Tuple<int, int>> result = new List<Tuple<int, int>>();
+            for (int i = 0; i < num / 2 + 1; i++)
+                result.Add(new Tuple<int, int>(i, num - i * 2));
+            
+            return result;
+        }
+
+        private int CircleDifference(int X, int Y)
         {
             int level = Math.Max(Math.Abs(X), Math.Abs(Y));
             int edge = level * 2 + 1;
@@ -266,19 +382,19 @@ namespace prog
                     }
                     break;
             }
-            throw new Exception();
+            throw new Exception("CirlceDifference error");
         }
 
-         private Tuple<int, int> InverseCD(int Difference)
-         {
+        private Tuple<int, int> InverseCD(int difference)
+        {
              int edge = 0;
              for (int i = 1; ; i += 2)
-                 if (i * i > Difference)
+                 if (i * i > difference)
                  {
                      edge = i;
                      break;
                  }
-             if (Difference == 0)
+             if (difference == 0)
                  return new Tuple<int, int>(0, 0);
              int level = (edge - 1) / 2;
              int init = (int)(Math.Pow(edge - 2, 2));
@@ -291,21 +407,21 @@ namespace prog
              int x = 0;
              int y = 0;
              int index = 0;
-             if (init == Difference)
+             if (init == difference)
                  return new Tuple<int, int>(0, level);
 
              y = level;
              for (x += 1; x <= edge / 2; x++)
              {
                  init += repeat[index++];
-                 if (init == Difference)
+                 if (init == difference)
                      return new Tuple<int, int>(x, y);
              }
              x -= 1;
              for (y -= 1; y >= 0; y--)
              {
                  init += repeat[index++];
-                 if (init == Difference)
+                 if (init == difference)
                      return new Tuple<int, int>(x, y);
              }
              y = 0;
@@ -314,14 +430,14 @@ namespace prog
              for (y = -1; y >= -edge / 2; y--)
              {
                  init += repeat[index++];
-                 if (init == Difference)
+                 if (init == difference)
                      return new Tuple<int, int>(x, y);
              }
              y += 1;
              for (x -= 1; x >= 0; x--)
              {
                  init += repeat[index++];
-                 if (init == Difference)
+                 if (init == difference)
                      return new Tuple<int, int>(x, y);
              }
 
@@ -331,14 +447,14 @@ namespace prog
              for (x = -1; x >= -edge / 2; x--)
              {
                  init += repeat[index++];
-                 if (init == Difference)
+                 if (init == difference)
                      return new Tuple<int, int>(x, y);
              }
              x += 1;
              for (y += 1; y <= 0; y++)
              {
                  init += repeat[index++];
-                 if (init == Difference)
+                 if (init == difference)
                      return new Tuple<int, int>(x, y);
              }
              y -= 1;
@@ -349,22 +465,23 @@ namespace prog
              for (y += 1; y <= edge / 2; y++)
              {
                  init += repeat[index++];
-                 if (init == Difference)
+                 if (init == difference)
                      return new Tuple<int, int>(x, y);
              }
              y -= 1;
              for (x += 1; x <= edge / 2; x++)
              {
                  init += repeat[index++];
-                 if (init == Difference)
+                 if (init == difference)
                      return new Tuple<int, int>(x, y);
              }
-             throw new Exception();
-         }
+             throw new Exception("InverseCD error");
+        }
+
         #endregion
 
         #region Absolute position related function
-        public BitArray AbsolutePositionEncode(double input_x, double input_y)
+        private BitArray AbsolutePositionEncode(double input_x, double input_y)
         {
             List<int> candiateRegion = new List<int>();
             for (int count = 0; count < all_x.Count; count++)
@@ -397,6 +514,7 @@ namespace prog
             Console.WriteLine("Region Info: " + regionNameInfo[regionID]);
             Console.WriteLine("People Info: " + getPeopleInfo(regionNameInfo[regionID], regionPeopleInfo));
 
+            Console.WriteLine("\n--FIRST BIT--------------\n0");
             Console.WriteLine("\n--FIRST PART--------------");
             Console.WriteLine("first part codeword:" + huffmanCodeWordTable[regionID] + "(" + (huffmanCodeWordTable[regionID]).Length + " bits)");
 
@@ -425,8 +543,8 @@ namespace prog
 
 
             Console.WriteLine("\n--TOTAL-------------------");
-            Console.WriteLine("Codeword: " + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode);
-            Console.WriteLine("Length: " + (huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode).Length + " bits");
+            Console.WriteLine("Codeword: " + "0" + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode);
+            Console.WriteLine("Length: " + ("0" + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode).Length + " bits");
 
             List<bool> bits = new List<bool>();
 
@@ -439,7 +557,7 @@ namespace prog
             return new BitArray(bits.ToArray());
         }
 
-        public Tuple<double, double> AbsolutePositionDecode(BitArray codeword)
+        private Tuple<double, double> AbsolutePositionDecode(BitArray codeword)
         {
 
 
@@ -714,6 +832,5 @@ namespace prog
             }
             sw.Close();
         }
-
     }
 }
