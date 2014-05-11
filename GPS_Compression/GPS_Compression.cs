@@ -164,7 +164,7 @@ namespace prog
                 long afterF = temp - HoleCount(temp);
 
                 if (afterF == n)
-                    return Convert.ToString(temp, 2) + "111";
+                    return Convert.ToString(temp, 2) + "1111";
                 else if (afterF > n && (temp < max || max == 0))
                     max = temp;
                 else if (afterF < n && temp > min)
@@ -186,14 +186,14 @@ namespace prog
         {
             //remove last 111
             string str = "";
-            for (int i = 0; i < s.Length - 3; i++)
+            for (int i = 0; i < s.Length - 4; i++)
                 str += s[i];
 
             long n = Convert.ToInt64(str, 2);
             return n - HoleCount(n);
         }
 
-        static private BigInteger Factorial(int n)
+        private BigInteger Factorial(int n)
         {
             BigInteger r = 1;
             for (int i = 1; i <= n; i++)
@@ -202,7 +202,7 @@ namespace prog
             return r;
         }
 
-        static private long HoleCount(long num)
+        private long HoleCount(long num)
         {
             string bin = Convert.ToString(num, 2);
             int n = bin.Length;
@@ -223,7 +223,7 @@ namespace prog
                     else
                         result += (int)Math.Pow(2, n - i -1);
 
-                    if (i >= 2 && bin[i - 1] == '1' && bin[i - 2] == '1')
+                    if (i >= 3 && bin[i - 1] == '1' && bin[i - 2] == '1' && bin[i - 3] == '1')
                     {
                         if (!threeOneAlready)
                         {
@@ -236,12 +236,12 @@ namespace prog
             return result;
         }
 
-        static private long OneHoleCount(string bin)
+        private long OneHoleCount(string bin)
         {//bin must be "1", "10", "100", "1000" ...
             int n = bin.Length - 1;
 
             long totalCount = 0;
-            for (int i = 3; i <= n; i++)
+            for (int i = 4; i <= n; i++)
             {
                 int zeroCount = n - i;
                 int oneCount = i;
@@ -250,18 +250,18 @@ namespace prog
                 long total = (long)(Factorial(zeroCount + oneCount) / Factorial(zeroCount) / Factorial(oneCount));
 
                 //divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
-                List<Tuple<int, int>> r = Grouping(oneCount);
+                List<Tuple<int, int, int>> r = Grouping(oneCount);
 
                 long back = 0;
-                foreach (Tuple<int, int> t in r)
-                    back += (int)(Combination(zeroCount + 1, t.Item1 + t.Item2) * Factorial(t.Item1 + t.Item2) / Factorial(t.Item1) / Factorial(t.Item2));
+                foreach (Tuple<int, int, int> t in r)
+                    back += (int)(Combination(zeroCount + 1, t.Item1 + t.Item2 + t.Item3) * Factorial(t.Item1 + t.Item2 + t.Item3) / Factorial(t.Item1) / Factorial(t.Item2) / Factorial(t.Item3));
 
                 totalCount += total - back;
             }
             return totalCount;
         }
 
-        static private int Combination(int a, int b)
+        private int Combination(int a, int b)
         {
             if (b > a)
                 return 0;
@@ -270,12 +270,15 @@ namespace prog
             return r;
         }
 
-        static List<Tuple<int, int>> Grouping(int num)
+        private List<Tuple<int, int, int>> Grouping(int num)
         {//divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
-            List<Tuple<int, int>> result = new List<Tuple<int, int>>();
-            for (int i = 0; i < num / 2 + 1; i++)
-                result.Add(new Tuple<int, int>(i, num - i * 2));
-            
+            List<Tuple<int, int, int>> result = new List<Tuple<int, int, int>>();
+            for (int j = 0; j < num / 3 + 1; j++)
+            {
+                int num2 = num - j * 3;
+                for (int i = 0; i < num2 / 2 + 1; i++)
+                    result.Add(new Tuple<int, int, int>(j, i, num2 - i * 2));
+            }
             return result;
         }
 
@@ -522,6 +525,7 @@ namespace prog
             if (!find)
             {
                 Console.WriteLine("not in Taiwan");
+                throw new Exception("Not in Taiwan");
                 return null;
             }
 
