@@ -11,18 +11,18 @@ namespace prog
     {
         static void Main(string[] args)
         {
-            Tuple<double, double> input = new Tuple<double, double>(120.99120, 24.79497);
-            Tuple<double, double> reference = new Tuple<double, double>(120.98313, 24.80204);
+            Tuple<double, double> input = new Tuple<double, double>(24.79539, 120.99117);
+            Tuple<double, double> reference = new Tuple<double, double>(24.80335, 120.97893);
 
             GPS_Compression GPSC = new GPS_Compression();
 
             //encode
-            BitArray codeword = GPSC.Encode(input.Item1, input.Item2, reference.Item1, reference.Item2);
+            BitArray codeword = GPSC.Encode(input.Item2, input.Item1, reference.Item2, reference.Item1);
 
             //decode
-            Tuple<double, double> result = GPSC.Decode(codeword, reference.Item1, reference.Item2);
+            Tuple<double, double> result = GPSC.Decode(codeword, reference.Item2, reference.Item1);
             if (result != null)
-                Console.WriteLine(result.Item1 + "\t" + result.Item2);
+                Console.WriteLine(result.Item2 + "\t" + result.Item1);
             else
                 Console.WriteLine("error codeword");
             
