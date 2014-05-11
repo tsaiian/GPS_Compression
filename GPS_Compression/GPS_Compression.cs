@@ -87,11 +87,13 @@ namespace prog
                 return AbsolutePositionEncode(input_x, input_y);
 
             BitArray refCodeword = ReferencePositionEncode(input_x, input_y, old_x, old_y);
+
+            if (refCodeword.Length < 32)
+                return refCodeword;
+                
             BitArray absCodeword = AbsolutePositionEncode(input_x, input_y);
 
             Console.WriteLine(refCodeword.Length + "\t" + absCodeword.Length);
-
-
             if (refCodeword.Length < absCodeword.Length)
                 return refCodeword;
             else
@@ -193,7 +195,7 @@ namespace prog
             return n - HoleCount(n);
         }
 
-        static private BigInteger Factorial(int n)
+        private BigInteger Factorial(int n)
         {
             BigInteger r = 1;
             for (int i = 1; i <= n; i++)
@@ -202,7 +204,7 @@ namespace prog
             return r;
         }
 
-        static private long HoleCount(long num)
+        private long HoleCount(long num)
         {
             string bin = Convert.ToString(num, 2);
             int n = bin.Length;
@@ -236,7 +238,7 @@ namespace prog
             return result;
         }
 
-        static private long OneHoleCount(string bin)
+        private long OneHoleCount(string bin)
         {//bin must be "1", "10", "100", "1000" ...
             int n = bin.Length - 1;
 
@@ -261,7 +263,7 @@ namespace prog
             return totalCount;
         }
 
-        static private int Combination(int a, int b)
+        private int Combination(int a, int b)
         {
             if (b > a)
                 return 0;
@@ -270,7 +272,7 @@ namespace prog
             return r;
         }
 
-        static List<Tuple<int, int>> Grouping(int num)
+        List<Tuple<int, int>> Grouping(int num)
         {//divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
             List<Tuple<int, int>> result = new List<Tuple<int, int>>();
             for (int i = 0; i < num / 2 + 1; i++)
@@ -522,6 +524,7 @@ namespace prog
             if (!find)
             {
                 Console.WriteLine("not in Taiwan");
+                throw new Exception("Not in Taiwan!");
                 return null;
             }
 
@@ -574,8 +577,6 @@ namespace prog
 
         private Tuple<double, double> AbsolutePositionDecode(BitArray codeword)
         {
-
-
             //decode first part
             int regionID = 0;
             bool huffmanDecodeSuccessful = false;
@@ -605,7 +606,6 @@ namespace prog
                 thirdPart += (codeword[i] ? "1" : "0");
 
             return DecodeRemainPart(regionID, Convert.ToInt32(secondPart, 2), Convert.ToInt32(thirdPart, 2), all_x[regionID], all_y[regionID]);
-
         }
 
         private Tuple<double, double> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
@@ -639,8 +639,8 @@ namespace prog
 
                     if (inRegion && inRegionNum == NumInRegion)
                     {
-                        double deltaY = (int)((double)detailNum / 6) * 0.00001;
-                        double deltaX = (int)((double)detailNum % 6) * 0.00001;
+                        double deltaY = (int)((double)detailNum / 8) * 0.00001;
+                        double deltaX = (int)((double)detailNum % 8) * 0.00001;
 
                         return new Tuple<double, double>(Math.Round(_x + deltaX, 5), Math.Round(_y + deltaY, 5));
                     }
@@ -740,18 +740,11 @@ namespace prog
                         found = true;
                         isInRegion = true;
 
-                        int detailBlockNum = (int)(Math.Round((input_y - Math.Round(_y, 5)), 5) * 100000) * 6 + (int)(Math.Round((input_x - Math.Round(_x, 5)), 5) * 100000);
+                        int detailBlockNum = (int)(Math.Round((input_y - Math.Round(_y, 5)), 5) * 100000) * 8 + (int)(Math.Round((input_x - Math.Round(_x, 5)), 5) * 100000);
                         result.Add("detailBlockNum", detailBlockNum);
                     }
                 }
-                //foreach (double l in points)
-                //    sw.Write(l + " ");
-                //sw.WriteLine();
-
             }
-            //sw.Close();
-            //return -1;
-            //return false;
 
             if (isInRegion)
                 result.Add("inRegionNum", inRegionNum);
@@ -785,7 +778,7 @@ namespace prog
             if (corssLineCount % 2 != 0)
             {
                 Console.WriteLine("odd number error.");
-                Console.ReadKey();
+                throw new Exception("Odd number error.");
             }
             return points;
         }

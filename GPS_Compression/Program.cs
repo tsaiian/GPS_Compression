@@ -11,8 +11,8 @@ namespace prog
     {
         static void Main(string[] args)
         {
-            Tuple<double, double> input = new Tuple<double, double>(24.79539, 120.99117);
-            Tuple<double, double> reference = new Tuple<double, double>(24.80335, 120.97893);
+            Tuple<double, double> input = new Tuple<double, double>(22.63978, 120.30207);
+            Tuple<double, double> reference = new Tuple<double, double>(22.74452, 120.30210);
 
             GPS_Compression GPSC = new GPS_Compression();
 
