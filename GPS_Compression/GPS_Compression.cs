@@ -145,7 +145,7 @@ namespace prog
             foreach(bool b in codeword)
                 str += (b ? "1" : "0");
 
-            Tuple<int, int> diff = InverseCD(DecodeInt(str));
+            Tuple<int, int> diff = InverseCD((int)DecodeInt(str));
 
             double resultX = old_x + ((double)diff.Item1 * 0.00001);
             double resultY = old_y + ((double)diff.Item2 * 0.00001);
@@ -153,31 +153,43 @@ namespace prog
             return new Tuple<double, double>(resultX, resultY);
         }
 
-        private string EncodeInt(int n)
+        private string EncodeInt(long n)
         {
-            int temp = n;
-            int preHc = 0;
+            long max = 0;
+            long min = 0;
+
+            long temp = n;
             while (true)
             {
-                int hc = HoleCount(temp);
+                long afterF = temp - HoleCount(temp);
 
-                if (temp - hc == n)
+                if (afterF == n)
                     return Convert.ToString(temp, 2) + "111";
-                else if (temp - hc > n)
-                    throw new Exception("EncodeInt error");
-                temp += hc - preHc;
-                preHc = hc;
+                else if (afterF > n && (temp < max || max == 0))
+                    max = temp;
+                else if (afterF < n && temp > min)
+                    min = temp;
+
+                long preTemp = temp;
+
+                if (max == 0)
+                    temp *= 2;
+                else
+                    temp = (long)((min + max) / 2);
+                
+                if (temp == preTemp || temp < 0)
+                    throw new Exception("Overflow exception");
             }
         }
 
-        private int DecodeInt(string s)
+        private long DecodeInt(string s)
         {
             //remove last 111
             string str = "";
             for (int i = 0; i < s.Length - 3; i++)
                 str += s[i];
 
-            int n = Convert.ToInt32(str, 2);
+            long n = Convert.ToInt64(str, 2);
             return n - HoleCount(n);
         }
 
@@ -190,12 +202,12 @@ namespace prog
             return r;
         }
 
-        static private int HoleCount(int num)
+        static private long HoleCount(long num)
         {
             string bin = Convert.ToString(num, 2);
             int n = bin.Length;
-            
-            int result = 0;
+
+            long result = 0;
             bool threeOneAlready = false;
             for (int i = 0; i < n; i++)
             {
@@ -224,23 +236,23 @@ namespace prog
             return result;
         }
 
-        static private int OneHoleCount(string bin)
+        static private long OneHoleCount(string bin)
         {//bin must be "1", "10", "100", "1000" ...
             int n = bin.Length - 1;
 
-            int totalCount = 0;
+            long totalCount = 0;
             for (int i = 3; i <= n; i++)
             {
                 int zeroCount = n - i;
                 int oneCount = i;
 
                 //all possible combination
-                int total = (int)(Factorial(zeroCount + oneCount) / Factorial(zeroCount) / Factorial(oneCount));
+                long total = (long)(Factorial(zeroCount + oneCount) / Factorial(zeroCount) / Factorial(oneCount));
 
                 //divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
                 List<Tuple<int, int>> r = Grouping(oneCount);
 
-                int back = 0;
+                long back = 0;
                 foreach (Tuple<int, int> t in r)
                     back += (int)(Combination(zeroCount + 1, t.Item1 + t.Item2) * Factorial(t.Item1 + t.Item2) / Factorial(t.Item1) / Factorial(t.Item2));
 
