@@ -155,15 +155,18 @@ namespace prog
 
         private string EncodeInt(int n)
         {
-            int ok = 0;
-            for (int i = 1; ; i++)
+            int temp = n;
+            int preHc = 0;
+            while (true)
             {
-                if (!Convert.ToString(i, 2).Contains("111"))
-                    ok++;
+                int hc = HoleCount(temp);
 
-                if (ok == n)
-                    return Convert.ToString(i, 2) + "111";
-                
+                if (temp - hc == n)
+                    return Convert.ToString(temp, 2) + "111";
+                else if (temp - hc > n)
+                    throw new Exception("EncodeInt error");
+                temp += hc - preHc;
+                preHc = hc;
             }
         }
 
