@@ -8,7 +8,7 @@ namespace prog
     class Node
     {
         public string Symbol { get; set; }
-        public int Frequency { get; set; }
+        public double Frequency { get; set; }
         public Node Right { get; set; }
         public Node Left { get; set; }
 

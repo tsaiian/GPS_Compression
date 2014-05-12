@@ -20,6 +20,7 @@ namespace prog
         public GPS_Compression()
         {
             ReadData();
+            //BuildHuffmanTree();
         }
 
         private void ReadData()
@@ -512,7 +513,7 @@ namespace prog
             Dictionary<string, double> result = null;
             foreach (int id in candiateRegion)
             {
-                result = inThisRegion(id, input_x, input_y, all_x[id], all_y[id]);
+                result = inThisRegion(id, input_x, input_y);
                 if ((regionNum = (int)result["inRegionNum"]) != -1)
                 {
                     regionID = id;
@@ -530,7 +531,7 @@ namespace prog
 
             Console.WriteLine("Region ID: " + regionID);
             Console.WriteLine("Region Info: " + regionNameInfo[regionID]);
-            Console.WriteLine("People Info: " + getPeopleInfo(regionNameInfo[regionID], regionPeopleInfo));
+            Console.WriteLine("People Info: " + getPeopleInfo(regionID));
 
             Console.WriteLine("\n--FIRST BIT--------------\n0");
             Console.WriteLine("\n--FIRST PART--------------");
@@ -649,11 +650,13 @@ namespace prog
             return null;
         }
 
-        static public string getPeopleInfo(string regionNameInfo, List<string> regionPeopleInfo)
+        public string getPeopleInfo(int regionID)
         {
-            string s1 = regionNameInfo.Split(new char[] { ',' })[3].Replace("高雄縣", "高雄市").Replace("台中縣", "台中市").Replace("台南縣", "台南市");
-            string s2 = regionNameInfo.Split(new char[] { ',' })[4].Replace("臺", "台");
-            string s3 = regionNameInfo.Split(new char[] { ',' })[5];
+            string nameInfo = regionNameInfo[regionID];
+
+            string s1 = nameInfo.Split(new char[] { ',' })[3].Replace("高雄縣", "高雄市").Replace("台中縣", "台中市").Replace("台南縣", "台南市");
+            string s2 = nameInfo.Split(new char[] { ',' })[4].Replace("臺", "台");
+            string s3 = nameInfo.Split(new char[] { ',' })[5];
 
             List<string> all_s1 = new List<string>();
             List<string> all_s2 = new List<string>();
@@ -694,8 +697,11 @@ namespace prog
 
         }
 
-        private Dictionary<string, double> inThisRegion(int id, double input_x, double input_y, List<double> lx, List<double> ly)
+        public Dictionary<string, double> inThisRegion(int id, double input_x, double input_y)
         {
+            List<double> lx = all_x[id];
+            List<double> ly = all_y[id];
+
             Dictionary<string, double> result = new Dictionary<string, double>();
             bool isInRegion = false, found = false;
 
@@ -823,7 +829,7 @@ namespace prog
         {
             Console.WriteLine("[Build HuffmanTree]");
             HuffmanTree huffmanTree = new HuffmanTree();
-            huffmanTree.Build(regionNameInfo, regionPeopleInfo);
+            huffmanTree.Build(regionNameInfo, this);
 
             StreamWriter sw = new StreamWriter("huffmanCodeTable.txt");
             for (int i = 0; i < regionNameInfo.Count; i++)

@@ -10,13 +10,15 @@ namespace prog
     {
         private List<Node> nodes = new List<Node>();
         public Node Root { get; set; }
-        public Dictionary<string, int> Frequencies = new Dictionary<string, int>();
+        public Dictionary<string, double> Frequencies = new Dictionary<string, double>();
 
-        public void Build(List<string> regionNameInfo, List<string> regionPeopleInfo)
+        public void Build(List<string> regionNameInfo, GPS_Compression gpsc)
         {
+            
             for (int i = 0; i < regionNameInfo.Count; i++)
             {
-                string peopleInfo = GPS_Compression.getPeopleInfo(regionNameInfo[i], regionPeopleInfo);
+                string peopleInfo = gpsc.getPeopleInfo(i);
+                //int sizeInfo = (int)gpsc.inThisRegion(i, 0, 0)["totalPointInRegion"];
 
                 int peopleCount = 0;
                 if (peopleInfo.Equals("no data"))
@@ -24,12 +26,10 @@ namespace prog
                 else
                     peopleCount = Convert.ToInt32(peopleInfo.Split(new char[] { ',' })[7]);
 
-                
-
-                Frequencies.Add(regionNameInfo[i], peopleCount);
+                Frequencies.Add(regionNameInfo[i], (double)peopleCount);
             }
 
-            foreach (KeyValuePair<string, int> symbol in Frequencies)
+            foreach (KeyValuePair<string, double> symbol in Frequencies)
             {
                 nodes.Add(new Node() { Symbol = symbol.Key, Frequency = symbol.Value });
             }
