@@ -94,7 +94,6 @@ namespace prog
                 
             BitArray absCodeword = AbsolutePositionEncode(input_x, input_y);
 
-            Console.WriteLine(refCodeword.Length + "\t" + absCodeword.Length);
             if (refCodeword.Length < absCodeword.Length)
                 return refCodeword;
             else
@@ -121,7 +120,12 @@ namespace prog
             int deltaX = (int)(Math.Round((input_x - old_x), 5) * 100000);
             int deltaY = (int)(Math.Round((input_y - old_y), 5) * 100000);
 
-            int refInt = CircleDifference(deltaX, deltaY);
+            int refInt = CircleDifference(deltaX, deltaY) - 1;
+
+            if (refInt == -1)
+                return new BitArray(new bool[]{true, true, true, true});
+
+
             string binary = EncodeInt(refInt);
 
             List<bool> bits = new List<bool>();
@@ -132,12 +136,12 @@ namespace prog
             foreach (char s in binary)
                 bits.Add((s == '0') ? false : true);
 
-            Console.WriteLine("\n--FIRST BIT--------------\n1");
-            Console.WriteLine("refInt:" + refInt);
-            Console.WriteLine("EncodeInt:" + binary);
-            Console.WriteLine("\n--TOTAL--------------\n1");
-            Console.WriteLine("codeword:" + "1" + binary);
-            Console.WriteLine("length:" + ("1" + binary).Length + "\n");
+            //Console.WriteLine("\n--FIRST BIT--------------\n1");
+            //Console.WriteLine("refInt:" + refInt);
+            //Console.WriteLine("EncodeInt:" + binary);
+            //Console.WriteLine("\n--TOTAL--------------\n1");
+            //Console.WriteLine("codeword:" + "1" + binary);
+            //Console.WriteLine("length:" + ("1" + binary).Length + "\n");
 
             return new BitArray(bits.ToArray());
         }
@@ -529,17 +533,17 @@ namespace prog
                 return null;
             }
 
-            Console.WriteLine("Region ID: " + regionID);
-            Console.WriteLine("Region Info: " + regionNameInfo[regionID]);
-            Console.WriteLine("People Info: " + getPeopleInfo(regionID));
+            //Console.WriteLine("Region ID: " + regionID);
+            //Console.WriteLine("Region Info: " + regionNameInfo[regionID]);
+            //Console.WriteLine("People Info: " + getPeopleInfo(regionID));
 
-            Console.WriteLine("\n--FIRST BIT--------------\n0");
-            Console.WriteLine("\n--FIRST PART--------------");
-            Console.WriteLine("first part codeword:" + huffmanCodeWordTable[regionID] + "(" + (huffmanCodeWordTable[regionID]).Length + " bits)");
+            //Console.WriteLine("\n--FIRST BIT--------------\n0");
+            //Console.WriteLine("\n--FIRST PART--------------");
+            //Console.WriteLine("first part codeword:" + huffmanCodeWordTable[regionID] + "(" + (huffmanCodeWordTable[regionID]).Length + " bits)");
 
-            Console.WriteLine("\n--SECOND PART-------------");
-            Console.WriteLine("Total point count in Region: " + result["totalPointInRegion"]);
-            Console.WriteLine("No. x in Region: " + regionNum);
+            //Console.WriteLine("\n--SECOND PART-------------");
+            //Console.WriteLine("Total point count in Region: " + result["totalPointInRegion"]);
+            //Console.WriteLine("No. x in Region: " + regionNum);
 
             string zero = "";
             int zeroCount = Convert.ToString((int)result["totalPointInRegion"], 2).Length - Convert.ToString(regionNum, 2).Length;
@@ -548,9 +552,9 @@ namespace prog
 
             string secondBinCode = zero + Convert.ToString(regionNum, 2);
 
-            Console.WriteLine("second part codeword:" + secondBinCode + "(" + secondBinCode.Length + " bits)");
+            //Console.WriteLine("second part codeword:" + secondBinCode + "(" + secondBinCode.Length + " bits)");
 
-            Console.WriteLine("\n--THIRD PART--------------");
+            //Console.WriteLine("\n--THIRD PART--------------");
 
             zero = "";
             zeroCount = 6 - Convert.ToString((int)result["detailBlockNum"], 2).Length;
@@ -558,12 +562,12 @@ namespace prog
                 zero += "0";
 
             string thirdBinCode = zero + Convert.ToString((int)result["detailBlockNum"], 2);
-            Console.WriteLine("third part codeword: " + thirdBinCode + "(" + thirdBinCode.Length + " bits)");
+            //Console.WriteLine("third part codeword: " + thirdBinCode + "(" + thirdBinCode.Length + " bits)");
 
 
-            Console.WriteLine("\n--TOTAL-------------------");
-            Console.WriteLine("Codeword: " + "0" + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode);
-            Console.WriteLine("Length: " + ("0" + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode).Length + " bits");
+            //Console.WriteLine("\n--TOTAL-------------------");
+            //Console.WriteLine("Codeword: " + "0" + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode);
+            //Console.WriteLine("Length: " + ("0" + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode).Length + " bits");
 
             List<bool> bits = new List<bool>();
 
@@ -741,7 +745,7 @@ namespace prog
                             inRegionNum++;
                     }
 
-                    if (input_x < Math.Round(_x, 5) + 0.00008 && input_x >= Math.Round(_x, 5) && input_y < Math.Round(_y, 5) + 0.00008 && input_y >= Math.Round(_y, 5) && inRegion)
+                    if (input_x < Math.Round(_x + 0.00008, 5) && input_x >= Math.Round(_x, 5) && input_y < Math.Round(_y + 0.00008, 5) && input_y >= Math.Round(_y, 5) && inRegion)
                     {
                         found = true;
                         isInRegion = true;
