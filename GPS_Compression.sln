@@ -1,7 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GPS_Compression", "GPS_Compression\GPS_Compression.csproj", "{041C3FC1-5FB7-47CD-88BA-BD71C8BD0883}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Encode", "Encode\Encode.csproj", "{041C3FC1-5FB7-47CD-88BA-BD71C8BD0883}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Decode", "Decode\Decode.csproj", "{BB626FB0-276C-43EF-B446-F6197294B8C6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +15,10 @@ Global
 		{041C3FC1-5FB7-47CD-88BA-BD71C8BD0883}.Debug|x86.Build.0 = Debug|x86
 		{041C3FC1-5FB7-47CD-88BA-BD71C8BD0883}.Release|x86.ActiveCfg = Release|x86
 		{041C3FC1-5FB7-47CD-88BA-BD71C8BD0883}.Release|x86.Build.0 = Release|x86
+		{BB626FB0-276C-43EF-B446-F6197294B8C6}.Debug|x86.ActiveCfg = Debug|x86
+		{BB626FB0-276C-43EF-B446-F6197294B8C6}.Debug|x86.Build.0 = Debug|x86
+		{BB626FB0-276C-43EF-B446-F6197294B8C6}.Release|x86.ActiveCfg = Release|x86
+		{BB626FB0-276C-43EF-B446-F6197294B8C6}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
