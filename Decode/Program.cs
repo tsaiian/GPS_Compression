@@ -25,7 +25,6 @@ namespace Decode
                 double preY = 0, preX = 0;
                 for (int i = 0; i < line.Length; i++ )
                 {
-                    //Console.WriteLine("loop" + (i + 1));
                     bList.Add((line[i] == '0') ? false : true);
                     BitArray codeword = new BitArray(bList.ToArray());
 
@@ -33,13 +32,12 @@ namespace Decode
                     Tuple<double, double> result = GPSC.Decode(codeword, preX, preY);
                     if (result != null)
                     {
-                        sw.WriteLine(result.Item2 + " " + result.Item1);
+                        sw.WriteLine(String.Format("{0:f5}", result.Item2) + " " + String.Format("{0:f5}", result.Item1));
                         preX = result.Item1;
                         preY = result.Item2;
                         bList.Clear();
                     }
                 }
-                Console.ReadKey();
                 sr.Close();
                 sw.Close();
             }
