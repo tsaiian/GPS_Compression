@@ -107,10 +107,11 @@ namespace Encode
             int deltaX = (int)Math.Round((input_x - old_x) * 100000, 0);
             int deltaY = (int)Math.Round((input_y - old_y) * 100000, 0);
 
-            int refInt = CircleDifference(deltaX, deltaY) - 1;
-
+            int refInt = CircleDifference(deltaX, deltaY) - 2;
             if (refInt == -1)
-                return new BitArray(new bool[]{true, true, true, true});
+                return new BitArray(new bool[]{ true, false, true, true, true });
+            else if (refInt == -2)
+                return new BitArray(new bool[] { true, true, true, true });
 
             string binary = EncodeInt(refInt);
 
@@ -140,10 +141,13 @@ namespace Encode
             long temp = n;
             while (true)
             {
+                
                 long afterF = temp - HoleCount(temp);
 
-                if (afterF == n)
-                    return Convert.ToString(temp, 2) + "111";
+                if (afterF == n && !Convert.ToString(temp, 2).Contains("111"))
+                    return Convert.ToString(temp, 2) + "0111";
+                else if(afterF == n)
+                    max = temp;
                 else if (afterF > n && (temp < max || max == 0))
                     max = temp;
                 else if (afterF < n && temp > min)

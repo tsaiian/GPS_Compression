@@ -16,17 +16,17 @@ namespace Decode
             string[] inputs = Directory.GetFiles(@".\input", "*.out");
             foreach (string file in inputs)
             {
-                double preY = 0, preX = 0;
                 StreamReader sr = new StreamReader(file);
                 StreamWriter sw = new StreamWriter(file + ".txt");
-                while (!sr.EndOfStream)
+                
+                string line = sr.ReadLine();
+
+                List<bool> bList = new List<bool>();
+                double preY = 0, preX = 0;
+                for (int i = 0; i < line.Length; i++ )
                 {
-                    string line = sr.ReadLine();
-
-                    List<bool> bList = new List<bool>();
-                    foreach (char c in line)
-                        bList.Add((c == '0') ? false : true);
-
+                    //Console.WriteLine("loop" + (i + 1));
+                    bList.Add((line[i] == '0') ? false : true);
                     BitArray codeword = new BitArray(bList.ToArray());
 
                     //decode
@@ -36,11 +36,10 @@ namespace Decode
                         sw.WriteLine(result.Item2 + " " + result.Item1);
                         preX = result.Item1;
                         preY = result.Item2;
+                        bList.Clear();
                     }
-                    else
-                        Console.WriteLine("error codeword");
-
                 }
+                Console.ReadKey();
                 sr.Close();
                 sw.Close();
             }

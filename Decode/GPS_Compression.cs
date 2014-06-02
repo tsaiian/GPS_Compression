@@ -90,10 +90,14 @@ namespace Decode
             foreach(bool b in codeword)
                 str += (b ? "1" : "0");
 
-            if(str.Equals("111"))
+            if (str.Equals("111"))
                 return new Tuple<double, double>(old_x, old_y);
+            else if (str.Equals("0111"))
+                return new Tuple<double, double>(old_x, old_y + 0.00001);
+            else if (!str.EndsWith("0111"))
+                return null;
 
-            Tuple<int, int> diff = InverseCD((int)DecodeInt(str) + 1);
+            Tuple<int, int> diff = InverseCD((int)DecodeInt(str) + 2);
 
             double resultX = old_x + ((double)diff.Item1 * 0.00001);
             double resultY = old_y + ((double)diff.Item2 * 0.00001);
@@ -103,9 +107,9 @@ namespace Decode
 
         private long DecodeInt(string s)
         {
-            //remove last 111
+            //remove last 0111
             string str = "";
-            for (int i = 0; i < s.Length - 3; i++)
+            for (int i = 0; i < s.Length - 4; i++)
                 str += s[i];
 
             long n = Convert.ToInt64(str, 2);
@@ -325,17 +329,32 @@ namespace Decode
             for (int i = codeword.Length - 6; i < codeword.Length; i++)
                 thirdPart += (codeword[i] ? "1" : "0");
 
-            return DecodeRemainPart(regionID, Convert.ToInt32(secondPart, 2), Convert.ToInt32(thirdPart, 2), all_x[regionID], all_y[regionID]);
+            try
+            {
+                Tuple<double, double, int> result = DecodeRemainPart(regionID, Convert.ToInt32(secondPart, 2), Convert.ToInt32(thirdPart, 2), all_x[regionID], all_y[regionID]);
+                if (Convert.ToString(result.Item3, 2).Length + 6 != codeword.Length - temp.Length)
+                    return null;
+                else
+                    return new Tuple<double, double>(result.Item1, result.Item2);
+                
+            }
+            catch
+            {
+                return null;
+            }
         }
 
-        private Tuple<double, double> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
+        private Tuple<double, double, int> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
         {
             double minX = findMin(lx);
             double maxX = findMax(lx);
             double minY = findMin(ly);
             double maxY = findMax(ly);
 
-            int inRegionNum = -1;
+            int inRegionNum = -1, inRegionTotalNum = 0;;
+            bool found = false;
+            double resultX = 0, resultY = 0;
+
             double _y = Math.Ceiling(minY * 100000) / 100000;
             for (; _y < maxY; _y += 0.00008)
             {
@@ -353,20 +372,32 @@ namespace Decode
                     if (matchCount % 2 == 1)
                         inRegion = inRegion ? false : true;
 
+
                     if (inRegion)
-                        inRegionNum++;
-
-
-                    if (inRegion && inRegionNum == NumInRegion)
                     {
+                        inRegionTotalNum++;
+
+                        if (!found)
+                            inRegionNum++;
+                    }
+
+
+                    if (inRegion && inRegionNum == NumInRegion && !found)
+                    {
+                        found = true;
+
                         double deltaY = (int)((double)detailNum / 8) * 0.00001;
                         double deltaX = (int)((double)detailNum % 8) * 0.00001;
 
-                        return new Tuple<double, double>(Math.Round(_x + deltaX, 5), Math.Round(_y + deltaY, 5));
+                        resultX = Math.Round(_x + deltaX, 5);
+                        resultY = Math.Round(_y + deltaY, 5);
                     }
                 }
             }
-            return null;
+            if (!found)
+                return null;
+            else
+                return new Tuple<double, double, int>(resultX, resultY, inRegionTotalNum);
         }
 
         private List<double> LineCrossNum(double y, List<double> lx, List<double> ly, double minX, double maxX)

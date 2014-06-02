@@ -34,7 +34,6 @@ namespace Encode
 
                     foreach (bool b in codeword)
                         sw.Write(b ? "1" : "0");
-                    sw.WriteLine();
 
                     preX = x;
                     preY = y;
