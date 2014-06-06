@@ -52,7 +52,7 @@
     <Content Include="data\boundary.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="data\huffmanCodeTable.txt">
+    <Content Include="data\IntMap.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="data\TWN_VILLAGE.mid">

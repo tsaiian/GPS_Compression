@@ -11,9 +11,10 @@ namespace Decode
     class GPS_Compression
     {
         private List<string> regionNameInfo = new List<string>();
-        private Dictionary<int, string> huffmanCodeWordTable = new Dictionary<int, string>();
+        private Dictionary<int, Tuple<int, int>> intMap = new Dictionary<int, Tuple<int, int>>();
         private List<List<double>> all_x = new List<List<double>>();
         private List<List<double>> all_y = new List<List<double>>();
+
 
         #region Constructor and data prepare
         public GPS_Compression()
@@ -56,26 +57,26 @@ namespace Decode
             }
             sr.Close();
 
-            Console.WriteLine("[Loading codeword]");
-            sr = new StreamReader("data\\huffmanCodeTable.txt");
-            int i = 0;
+            sr = new StreamReader("data\\IntMap.txt");
             while (!sr.EndOfStream)
             {
                 string line = sr.ReadLine();
-                string strCodeword = line.Substring(line.IndexOf('\t') + 1);
+                string[] tokens = line.Split('\t');
 
-                huffmanCodeWordTable.Add(i++, strCodeword);
+                intMap.Add(Convert.ToInt16(tokens[0]), new Tuple<int, int>(Convert.ToInt32(tokens[1]), Convert.ToInt32(tokens[2])));
             }
+            sr.Close();
         }
         #endregion
 
         public Tuple<double, double> Decode(BitArray codeword, double old_x, double old_y)
         {
             List<bool> temp = new List<bool>();
-            for (int i = 1; i < codeword.Length; i++)
+            for (int i = 0; i < codeword.Length; i++)
                 temp.Add(codeword[i]);
 
-
+            if (codeword.Length == 1)
+                return ReferencePositionDecode(new BitArray(temp.ToArray()), old_x, old_y);
             if (codeword.Length > 0 && codeword[0] == true)
                 return ReferencePositionDecode(new BitArray(temp.ToArray()), old_x, old_y);
             else
@@ -90,116 +91,17 @@ namespace Decode
             foreach(bool b in codeword)
                 str += (b ? "1" : "0");
 
-            if (str.Equals("111"))
+            if (str.Equals("0"))
                 return new Tuple<double, double>(old_x, old_y);
-            else if (str.Equals("0111"))
+            else if (str.Equals("1"))
                 return new Tuple<double, double>(old_x, old_y + 0.00001);
-            else if (!str.EndsWith("0111"))
-                return null;
 
-            Tuple<int, int> diff = InverseCD((int)DecodeInt(str) + 2);
+            Tuple<int, int> diff = InverseCD((int)decodeInt(str.Substring(1)) + 2);
 
             double resultX = old_x + ((double)diff.Item1 * 0.00001);
             double resultY = old_y + ((double)diff.Item2 * 0.00001);
 
             return new Tuple<double, double>(resultX, resultY);
-        }
-
-        private long DecodeInt(string s)
-        {
-            //remove last 0111
-            string str = "";
-            for (int i = 0; i < s.Length - 4; i++)
-                str += s[i];
-
-            long n = Convert.ToInt64(str, 2);
-            return n - HoleCount(n);
-        }
-
-        private BigInteger Factorial(int n)
-        {
-            BigInteger r = 1;
-            for (int i = 1; i <= n; i++)
-                r *= i;
-
-            return r;
-        }
-
-        private long HoleCount(long num)
-        {
-            string bin = Convert.ToString(num, 2);
-            int n = bin.Length;
-
-            long result = 0;
-            bool threeOneAlready = false;
-            for (int i = 0; i < n; i++)
-            {
-                if (bin[i] == '1')
-                {
-                    //1[0]+
-                    string oneZeros = "1";
-                    for (int j = 0; j < n - i - 1; j++)
-                        oneZeros += "0";
-
-                    if (!threeOneAlready)
-                        result += OneHoleCount(oneZeros);
-                    else
-                        result += (int)Math.Pow(2, n - i -1);
-
-                    if (i >= 2 && bin[i - 1] == '1' && bin[i - 2] == '1')
-                    {
-                        if (!threeOneAlready)
-                        {
-                            threeOneAlready = true;
-                            result++;
-                        }
-                    }
-                }
-            }
-            return result;
-        }
-
-        private long OneHoleCount(string bin)
-        {//bin must be "1", "10", "100", "1000" ...
-            int n = bin.Length - 1;
-
-            long totalCount = 0;
-            for (int i = 3; i <= n; i++)
-            {
-                int zeroCount = n - i;
-                int oneCount = i;
-
-                //all possible combination
-                long total = (long)(Factorial(zeroCount + oneCount) / Factorial(zeroCount) / Factorial(oneCount));
-
-                //divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
-                List<Tuple<int, int>> r = Grouping(oneCount);
-
-                long back = 0;
-                foreach (Tuple<int, int> t in r)
-                    back += (int)(Combination(zeroCount + 1, t.Item1 + t.Item2) * Factorial(t.Item1 + t.Item2) / Factorial(t.Item1) / Factorial(t.Item2));
-
-                totalCount += total - back;
-            }
-            return totalCount;
-        }
-
-        private int Combination(int a, int b)
-        {
-            if (b > a)
-                return 0;
-
-            int r = (int)(Factorial(a) / Factorial(b) / Factorial(a - b));
-            return r;
-        }
-
-        List<Tuple<int, int>> Grouping(int num)
-        {//divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
-            List<Tuple<int, int>> result = new List<Tuple<int, int>>();
-            for (int i = 0; i < num / 2 + 1; i++)
-                result.Add(new Tuple<int, int>(i, num - i * 2));
-            
-            return result;
         }
 
         private Tuple<int, int> InverseCD(int difference)
@@ -301,47 +203,42 @@ namespace Decode
 
         private Tuple<double, double> AbsolutePositionDecode(BitArray codeword)
         {
-            //decode first part
-            int regionID = 0;
-            bool huffmanDecodeSuccessful = false;
-            string temp = "";
-            foreach (bool b in codeword)
+            //first part
+            string firstPart = "";
+            if (codeword.Length >= 7)
             {
-                temp += (b ? "1" : "0");
+                for (int i = 1; i < 7; i++)
+                    firstPart += (codeword[i] ? "1" : "0");
+            }
+            else
+                return null;
 
-                if (huffmanCodeWordTable.ContainsValue(temp))
+            //second part
+            string secondPart = "";
+            for (int i = 7; i < codeword.Length; i++)
+                secondPart += (codeword[i] ? "1" : "0");
+
+            int n = decodeInt(secondPart);
+            int regionID = -1, numInRegion = -1;
+            foreach(KeyValuePair<int, Tuple<int, int>> kvp in intMap)
+            {
+                if (kvp.Value.Item1 <= n && n <= kvp.Value.Item2)
                 {
-                    regionID = huffmanCodeWordTable.FirstOrDefault(x => x.Value == temp).Key;
-                    huffmanDecodeSuccessful = true;
+                    regionID = kvp.Key;
+                    numInRegion = n - kvp.Value.Item1;
                     break;
                 }
             }
 
-            if (!huffmanDecodeSuccessful)
-                return null;
-
-            //decode remain part
-            string secondPart = "";
-            for (int i = temp.Length; i + 6 < codeword.Length; i++)
-                secondPart += (codeword[i] ? "1" : "0");
-
-            string thirdPart = "";
-            for (int i = codeword.Length - 6; i < codeword.Length; i++)
-                thirdPart += (codeword[i] ? "1" : "0");
-
             try
             {
-                Tuple<double, double, int> result = DecodeRemainPart(regionID, Convert.ToInt32(secondPart, 2), Convert.ToInt32(thirdPart, 2), all_x[regionID], all_y[regionID]);
-                if (Convert.ToString(result.Item3, 2).Length + 6 != codeword.Length - temp.Length)
-                    return null;
-                else
-                    return new Tuple<double, double>(result.Item1, result.Item2);
-                
+                Tuple<double, double, int> result = DecodeRemainPart(regionID, numInRegion, Convert.ToInt32(firstPart, 2), all_x[regionID], all_y[regionID]);
+                return new Tuple<double, double>(result.Item1, result.Item2);
             }
             catch
             {
                 return null;
-            }
+            };
         }
 
         private Tuple<double, double, int> DecodeRemainPart(int regionID, int NumInRegion, int detailNum, List<double> lx, List<double> ly)
@@ -462,5 +359,25 @@ namespace Decode
             return res;
         }
         #endregion
+
+        private int decodeInt(string s)
+        {
+            if (s.StartsWith("1"))
+                return Convert.ToInt32(s, 2) * 2 - 2;
+            else
+            {
+                string temp = "";
+                for (int k = 0; k < s.Length; k++)
+                {
+                    if (s[k] == '0')
+                        temp += '1';
+                    else
+                        temp += '0';
+                }
+                return Convert.ToInt32(temp, 2) * 2 + 1 - 2;
+
+            }
+        }
+        
     }
 }

@@ -12,7 +12,7 @@ namespace Encode
     {
         private List<string> regionNameInfo = new List<string>();
         private List<string> regionPeopleInfo = new List<string>();
-        private Dictionary<int, string> huffmanCodeWordTable = new Dictionary<int, string>();
+        private Dictionary<int, Tuple<int, int>> intMap = new Dictionary<int, Tuple<int, int>>();
         private List<List<double>> all_x = new List<List<double>>();
         private List<List<double>> all_y = new List<List<double>>();
 
@@ -20,7 +20,7 @@ namespace Encode
         public GPS_Compression()
         {
             ReadData();
-            //BuildHuffmanTree();
+            //buildIntMap();
         }
 
         private void ReadData()
@@ -67,16 +67,15 @@ namespace Encode
             }
             sr.Close();
 
-            Console.WriteLine("[Loading codeword]");
-            sr = new StreamReader("data\\huffmanCodeTable.txt");
-            int i = 0;
+            sr = new StreamReader("data\\IntMap.txt");
             while (!sr.EndOfStream)
             {
                 string line = sr.ReadLine();
-                string strCodeword = line.Substring(line.IndexOf('\t') + 1);
+                string[] tokens = line.Split('\t');
 
-                huffmanCodeWordTable.Add(i++, strCodeword);
+                intMap.Add(Convert.ToInt16(tokens[0]), new Tuple<int, int>(Convert.ToInt32(tokens[1]), Convert.ToInt32(tokens[2])));
             }
+            sr.Close();
         }
         #endregion
 
@@ -108,12 +107,12 @@ namespace Encode
             int deltaY = (int)Math.Round((input_y - old_y) * 100000, 0);
 
             int refInt = CircleDifference(deltaX, deltaY) - 2;
-            if (refInt == -1)
-                return new BitArray(new bool[]{ true, false, true, true, true });
-            else if (refInt == -2)
-                return new BitArray(new bool[] { true, true, true, true });
+            if(refInt == -2)
+                return new BitArray(new bool[] { false });
+            else if(refInt == -1)
+                return new BitArray(new bool[] { true });
 
-            string binary = EncodeInt(refInt);
+            string binary = encodeInt(refInt);
 
             List<bool> bits = new List<bool>();
 
@@ -123,132 +122,7 @@ namespace Encode
             foreach (char s in binary)
                 bits.Add((s == '0') ? false : true);
 
-            //Console.WriteLine("\n--FIRST BIT--------------\n1");
-            //Console.WriteLine("refInt:" + refInt);
-            //Console.WriteLine("EncodeInt:" + binary);
-            //Console.WriteLine("\n--TOTAL--------------\n1");
-            //Console.WriteLine("codeword:" + "1" + binary);
-            //Console.WriteLine("length:" + ("1" + binary).Length + "\n");
-
             return new BitArray(bits.ToArray());
-        }
-
-        private string EncodeInt(long n)
-        {
-            long max = 0;
-            long min = 0;
-
-            long temp = n;
-            while (true)
-            {
-                
-                long afterF = temp - HoleCount(temp);
-
-                if (afterF == n && !Convert.ToString(temp, 2).Contains("111"))
-                    return Convert.ToString(temp, 2) + "0111";
-                else if(afterF == n)
-                    max = temp;
-                else if (afterF > n && (temp < max || max == 0))
-                    max = temp;
-                else if (afterF < n && temp > min)
-                    min = temp;
-
-                long preTemp = temp;
-
-                if (max == 0)
-                    temp *= 2;
-                else
-                    temp = (long)((min + max) / 2);
-                
-                if (temp == preTemp || temp < 0)
-                    throw new Exception("Overflow exception");
-            }
-        }
-
-        private BigInteger Factorial(int n)
-        {
-            BigInteger r = 1;
-            for (int i = 1; i <= n; i++)
-                r *= i;
-
-            return r;
-        }
-
-        private long HoleCount(long num)
-        {
-            string bin = Convert.ToString(num, 2);
-            int n = bin.Length;
-
-            long result = 0;
-            bool threeOneAlready = false;
-            for (int i = 0; i < n; i++)
-            {
-                if (bin[i] == '1')
-                {
-                    //1[0]+
-                    string oneZeros = "1";
-                    for (int j = 0; j < n - i - 1; j++)
-                        oneZeros += "0";
-
-                    if (!threeOneAlready)
-                        result += OneHoleCount(oneZeros);
-                    else
-                        result += (int)Math.Pow(2, n - i -1);
-
-                    if (i >= 2 && bin[i - 1] == '1' && bin[i - 2] == '1')
-                    {
-                        if (!threeOneAlready)
-                        {
-                            threeOneAlready = true;
-                            result++;
-                        }
-                    }
-                }
-            }
-            return result;
-        }
-
-        private long OneHoleCount(string bin)
-        {//bin must be "1", "10", "100", "1000" ...
-            int n = bin.Length - 1;
-
-            long totalCount = 0;
-            for (int i = 3; i <= n; i++)
-            {
-                int zeroCount = n - i;
-                int oneCount = i;
-
-                //all possible combination
-                long total = (long)(Factorial(zeroCount + oneCount) / Factorial(zeroCount) / Factorial(oneCount));
-
-                //divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
-                List<Tuple<int, int>> r = Grouping(oneCount);
-
-                long back = 0;
-                foreach (Tuple<int, int> t in r)
-                    back += (int)(Combination(zeroCount + 1, t.Item1 + t.Item2) * Factorial(t.Item1 + t.Item2) / Factorial(t.Item1) / Factorial(t.Item2));
-
-                totalCount += total - back;
-            }
-            return totalCount;
-        }
-
-        private int Combination(int a, int b)
-        {
-            if (b > a)
-                return 0;
-
-            int r = (int)(Factorial(a) / Factorial(b) / Factorial(a - b));
-            return r;
-        }
-
-        List<Tuple<int, int>> Grouping(int num)
-        {//divide to "11" and "1", and return the number of "11" and "1", ex. 11111 => (0, 5), (1, 3), (2, 1)
-            List<Tuple<int, int>> result = new List<Tuple<int, int>>();
-            for (int i = 0; i < num / 2 + 1; i++)
-                result.Add(new Tuple<int, int>(i, num - i * 2));
-            
-            return result;
         }
 
         private int CircleDifference(int X, int Y)
@@ -404,47 +278,28 @@ namespace Encode
                 throw new Exception("Not in Taiwan!");
             }
 
-            //Console.WriteLine("Region ID: " + regionID);
-            //Console.WriteLine("Region Info: " + regionNameInfo[regionID]);
-            //Console.WriteLine("People Info: " + getPeopleInfo(regionID));
-
-            //Console.WriteLine("\n--FIRST BIT--------------\n0");
-            //Console.WriteLine("\n--FIRST PART--------------");
-            //Console.WriteLine("first part codeword:" + huffmanCodeWordTable[regionID] + "(" + (huffmanCodeWordTable[regionID]).Length + " bits)");
-
-            //Console.WriteLine("\n--SECOND PART-------------");
-            //Console.WriteLine("Total point count in Region: " + result["totalPointInRegion"]);
-            //Console.WriteLine("No. x in Region: " + regionNum);
-
             string zero = "";
-            int zeroCount = Convert.ToString((int)result["totalPointInRegion"], 2).Length - Convert.ToString(regionNum, 2).Length;
-            for (int i = 0; i < zeroCount; i++)
-                zero += "0";
-
-            string secondBinCode = zero + Convert.ToString(regionNum, 2);
-
-            //Console.WriteLine("second part codeword:" + secondBinCode + "(" + secondBinCode.Length + " bits)");
-
-            //Console.WriteLine("\n--THIRD PART--------------");
-
-            zero = "";
-            zeroCount = 6 - Convert.ToString((int)result["detailBlockNum"], 2).Length;
+            int zeroCount = 6 - Convert.ToString((int)result["detailBlockNum"], 2).Length;
             for (int i = 0; i < zeroCount; i++)
                 zero += "0";
 
             string thirdBinCode = zero + Convert.ToString((int)result["detailBlockNum"], 2);
-            //Console.WriteLine("third part codeword: " + thirdBinCode + "(" + thirdBinCode.Length + " bits)");
 
-            //Console.WriteLine("\n--TOTAL-------------------");
-            //Console.WriteLine("Codeword: " + "0" + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode);
-            //Console.WriteLine("Length: " + ("0" + huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode).Length + " bits");
 
+            //Console.WriteLine("Region ID: " + regionID);
+            //Console.WriteLine("Region Info: " + regionNameInfo[regionID]);
+            //Console.WriteLine("People Info: " + getPeopleInfo(regionID));
+            //Console.ReadKey();
+
+            int n = intMap[regionID].Item1 + (int)result["inRegionNum"];
+            string intBin = encodeInt(n);
+            
             List<bool> bits = new List<bool>();
 
             //first bits -> abs
             bits.Add(false);
 
-            foreach (char s in (huffmanCodeWordTable[regionID] + secondBinCode + thirdBinCode))
+            foreach (char s in (thirdBinCode + intBin))
                 bits.Add((s == '0') ? false : true);
 
             return new BitArray(bits.ToArray());
@@ -626,26 +481,77 @@ namespace Encode
         }
         #endregion
 
-        private void BuildHuffmanTree()
+        private string encodeInt(int i)
         {
-            Console.WriteLine("[Build HuffmanTree]");
-            HuffmanTree huffmanTree = new HuffmanTree();
-            huffmanTree.Build(regionNameInfo, this);
+            i += 2;
 
-            StreamWriter sw = new StreamWriter("huffmanCodeTable.txt");
+            string result = "";
+            if (i % 2 == 0)
+                result = Convert.ToString(i / 2, 2);
+            else
+            {
+                string s = Convert.ToString(Math.Abs(i / 2), 2);
+                for (int k = 0; k < s.Length; k++)
+                {
+                    if (s[k] == '0')
+                        result += '1';
+                    else
+                        result += '0';
+                }
+            }
+
+            return result;
+
+        }
+
+        private void buildIntMap()
+        {
+            List<Tuple<int, int, double>> allRegionInfo = new List<Tuple<int, int, double>>();
+
             for (int i = 0; i < regionNameInfo.Count; i++)
             {
                 Console.WriteLine(i);
-                BitArray encoded = huffmanTree.Encode(regionNameInfo[i]);
-                sw.Write(i + "\t");
-                foreach (bool bit in encoded)
-                {
-                    sw.Write((bit ? 1 : 0) + "");
-                }
-                sw.Write('\n');
+                string peopleInfo = getPeopleInfo(i);
 
+                int peopleCount = 0;
+                int totalPointInRegion = (int)inThisRegion(i, 0, 0)["totalPointInRegion"];
+                double density = 0;
+                if (peopleInfo.Equals("no data") || totalPointInRegion <= 500)
+                {
+                    density = 0.03;
+                }
+                else
+                {
+                    peopleCount = Convert.ToInt32(peopleInfo.Split(new char[] { ',' })[7]);
+                    density = ((double)peopleCount / totalPointInRegion);
+                }
+
+                Console.WriteLine("D:" + density + "\t" + peopleInfo);
+
+                allRegionInfo.Add(new Tuple<int, int, double>(i, totalPointInRegion, density));
+            }
+
+            allRegionInfo.Sort(
+                delegate(Tuple<int, int, double> firstPair, Tuple<int, int, double> nextPair)
+                {
+                    return firstPair.Item3.CompareTo(nextPair.Item3) * (-1);
+                }
+            );
+
+            StreamWriter sw = new StreamWriter("IntMap.txt");
+
+            int num = 0;
+            for (int i = 0; i < regionNameInfo.Count; i++)
+            {
+                sw.WriteLine(allRegionInfo[i].Item1 + "\t" + num + "\t" + (num + allRegionInfo[i].Item2 - 1) + "\t" + allRegionInfo[i].Item3);
+                sw.Flush();
+
+                num += allRegionInfo[i].Item2;
             }
             sw.Close();
+            Console.WriteLine("Build Map Finish!");
+            Console.ReadKey();
+
         }
     }
 }

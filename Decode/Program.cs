@@ -19,13 +19,15 @@ namespace Decode
                 StreamReader sr = new StreamReader(file);
                 StreamWriter sw = new StreamWriter(file + ".txt");
                 
-                string line = sr.ReadLine();
-
-                List<bool> bList = new List<bool>();
                 double preY = 0, preX = 0;
-                for (int i = 0; i < line.Length; i++ )
+                while(!sr.EndOfStream)
                 {
-                    bList.Add((line[i] == '0') ? false : true);
+                    string line = sr.ReadLine();
+
+                    List<bool> bList = new List<bool>();
+                    foreach(char c in line)
+                        bList.Add((c == '0') ? false : true);
+
                     BitArray codeword = new BitArray(bList.ToArray());
 
                     //decode
@@ -35,7 +37,6 @@ namespace Decode
                         sw.WriteLine(String.Format("{0:f5}", result.Item2) + " " + String.Format("{0:f5}", result.Item1));
                         preX = result.Item1;
                         preY = result.Item2;
-                        bList.Clear();
                     }
                 }
                 sr.Close();
